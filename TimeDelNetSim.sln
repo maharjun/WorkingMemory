@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TimeDelNetSim", "TimeDelNetSim\TimeDelNetSim.vcxproj", "{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_Exe|x64 = Debug_Exe|x64
+		Debug_Lib|x64 = Debug_Lib|x64
+		Release_Exe|x64 = Release_Exe|x64
+		Release_Lib|x64 = Release_Lib|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Debug_Exe|x64.ActiveCfg = Debug_Exe|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Debug_Exe|x64.Build.0 = Debug_Exe|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Debug_Lib|x64.ActiveCfg = Debug_Lib|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Debug_Lib|x64.Build.0 = Debug_Lib|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Release_Exe|x64.ActiveCfg = Release_Exe|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Release_Exe|x64.Build.0 = Release_Exe|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Release_Lib|x64.ActiveCfg = Release_Lib|x64
+		{69497DD9-FC4A-47FB-94B5-E3172BCAEA75}.Release_Lib|x64.Build.0 = Release_Lib|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

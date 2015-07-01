@@ -1,0 +1,6 @@
+[submodule "RandomNumGen"]
+	path = RandomNumGen
+	url = https://github.com/maharjun/RandomNumGen
+[submodule "MexMemoryInterfacing"]
+	path = MexMemoryInterfacing
+	url = https://github.com/maharjun/MexMemoryInterfacing
