@@ -76,9 +76,9 @@ int main(){
 		if (A == ExOps::EXCEPTION_MEM_FULL){
 			printf("Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
 			system("pause");
-			mxDestroyArray(Input);
-			return 0;
 		}
+		mxDestroyArray(Input);
+		return 0;
 	}
 	
 	OutputVars = lhs[0];

@@ -499,7 +499,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 			InitialStateOutput);
 	}
 	catch(ExOps::ExCodes A){
-		if (A = ExOps::EXCEPTION_MEM_FULL){
+		if (A == ExOps::EXCEPTION_MEM_FULL){
 		#ifdef MEX_LIB
 			char OutputString[256];
 			sprintf_s(OutputString, 256, "Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
@@ -512,7 +512,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 
 	chrono::system_clock::time_point TEnd = chrono::system_clock::now();
 #ifdef MEX_LIB
-	mexPrintf("The Time taken = %d milliseconds", chrono::duration_cast<chrono::milliseconds>(TEnd - TStart).count());
+	mexPrintf("The Time taken = %d milliseconds\n", chrono::duration_cast<chrono::milliseconds>(TEnd - TStart).count());
 	mexEvalString("drawnow");
 #elif defined MEX_EXE
 	printf("The Time taken = %d milliseconds\n", chrono::duration_cast<chrono::milliseconds>(TEnd - TStart).count());

@@ -87,10 +87,10 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 	auto &time = IntVars.Time;
 	auto k = (IntVars.i - 1) % 8192;
 
-	int QueueSize = onemsbyTstep*IntVars.DelayRange;
-	int RangeBeg = Range.begin();
-	int RangeEnd = Range.end();
-	for (int j = RangeBeg; j < RangeEnd; ++j){
+	size_t QueueSize = onemsbyTstep*IntVars.DelayRange;
+	size_t RangeBeg = Range.begin();
+	size_t RangeEnd = Range.end();
+	for (size_t j = RangeBeg; j < RangeEnd; ++j){
 		if (Vnow[j] == 30.0f){
 			//Implementing Izhikevich resetting
 			Vnow[j] = Neurons[j].c;
@@ -151,18 +151,18 @@ void InputArgs::IExtFunc(float time, MexVector<float> &Iext)
 
 void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 
-	int onemsbyTstep = IntVars.onemsbyTstep;
-	int NoOfms = IntVars.NoOfms;
-	int StorageStepSize = IntVars.StorageStepSize;
-	int Tbeg = IntVars.Time;
-	int nSteps = onemsbyTstep * NoOfms;
-	int OutputControl = IntVars.OutputControl;
-	int beta = IntVars.beta;
-	int N = IntVars.N;
-	int M = IntVars.M;
-	int DelayRange = IntVars.DelayRange;
+	auto onemsbyTstep = IntVars.onemsbyTstep;
+	auto NoOfms = IntVars.NoOfms;
+	auto StorageStepSize = IntVars.StorageStepSize;
+	auto Tbeg = IntVars.Time;
+	auto nSteps = onemsbyTstep * NoOfms;
+	auto OutputControl = IntVars.OutputControl;
+	auto beta = IntVars.beta;
+	auto N = IntVars.N;
+	auto M = IntVars.M;
+	auto DelayRange = IntVars.DelayRange;
 
-	int TimeDimLen;  // beta is the time offset from Tbeg which 
+	size_t TimeDimLen;  // beta is the time offset from Tbeg which 
 	// corresponds to the first valid storage location
 	if (StorageStepSize){
 		TimeDimLen = (nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
@@ -211,15 +211,15 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 		this->CurrentQIndexOut = MexVector<int>(TimeDimLen);
 }
 void OutputVarsStruct::initialize(const InternalVars &IntVars){
-	int TimeDimLen;
-	int N = IntVars.N;
-	int onemsbyTstep = IntVars.onemsbyTstep;
-	int NoOfms = IntVars.NoOfms;
-	int StorageStepSize = IntVars.StorageStepSize;
-	int Tbeg = IntVars.Time;
-	int nSteps = onemsbyTstep * NoOfms;
-	int OutputControl = IntVars.OutputControl;
-	int beta = IntVars.beta;
+	size_t TimeDimLen;
+	auto N = IntVars.N;
+	auto onemsbyTstep = IntVars.onemsbyTstep;
+	auto NoOfms = IntVars.NoOfms;
+	auto StorageStepSize = IntVars.StorageStepSize;
+	auto Tbeg = IntVars.Time;
+	auto nSteps = onemsbyTstep * NoOfms;
+	auto OutputControl = IntVars.OutputControl;
+	auto beta = IntVars.beta;
 
 	if (IntVars.StorageStepSize){
 		TimeDimLen = (nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
@@ -240,11 +240,11 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 		// just kept for code conformity
 }
 void FinalStateStruct::initialize(const InternalVars &IntVars){
-	int OutputControl	= IntVars.OutputControl;
-	int DelayRange		= IntVars.DelayRange;
-	int onemsbyTstep	= IntVars.onemsbyTstep;
-	int N				= IntVars.N;
-	int M				= IntVars.M;
+	auto OutputControl	= IntVars.OutputControl;
+	auto DelayRange		= IntVars.DelayRange;
+	auto onemsbyTstep	= IntVars.onemsbyTstep;
+	auto N				= IntVars.N;
+	auto M				= IntVars.M;
 
 	if (OutputControl & OutOps::FINAL_STATE_REQ){
 		this->V = MexVector<float>(N);
@@ -263,11 +263,11 @@ void FinalStateStruct::initialize(const InternalVars &IntVars){
 	this->Time = -1;
 }
 void InitialStateStruct::initialize(const InternalVars &IntVars){
-	int OutputControl = IntVars.OutputControl;
-	int DelayRange = IntVars.DelayRange;
-	int onemsbyTstep = IntVars.onemsbyTstep;
-	int N = IntVars.N;
-	int M = IntVars.M;
+	auto OutputControl = IntVars.OutputControl;
+	auto DelayRange = IntVars.DelayRange;
+	auto onemsbyTstep = IntVars.onemsbyTstep;
+	auto N = IntVars.N;
+	auto M = IntVars.M;
 
 	if (OutputControl & OutOps::INITIAL_STATE_REQ){
 		this->V = MexVector<float>(N);
@@ -287,9 +287,9 @@ void InitialStateStruct::initialize(const InternalVars &IntVars){
 }
 void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
 
-	int CurrentInsertPos = (i - beta) / (onemsbyTstep * StorageStepSize);
-	int iint = i % 8192;
-	int QueueSize = onemsbyTstep * DelayRange;
+	size_t CurrentInsertPos = (i - beta) / (onemsbyTstep * StorageStepSize);
+	size_t iint = i % 8192;
+	size_t QueueSize = onemsbyTstep * DelayRange;
 	// Storing U,V,Iin and Time
 	if (OutputControl & OutOps::V_REQ)
 		StateOut.VOut[CurrentInsertPos] = V;
@@ -354,10 +354,10 @@ void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct
 }
 void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
 	if (!StorageStepSize){
-		int nSteps = onemsbyTstep*NoOfms;
-		int CurrentInsertPos = i - 1;
-		int iint = i % 8192;
-		int QueueSize = onemsbyTstep * DelayRange;
+		size_t nSteps = onemsbyTstep*NoOfms;
+		size_t CurrentInsertPos = i - 1;       // This is never negative as i = 0 is the initial state
+		size_t iint = i % 8192;
+		size_t QueueSize = onemsbyTstep * DelayRange;
 		// Storing U,V,Iout and Time
 		if (OutputControl & OutOps::V_REQ)
 			StateOut.VOut[CurrentInsertPos] = V;
@@ -440,7 +440,7 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 	}
 }
 void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
-	int QueueSize = onemsbyTstep * DelayRange;
+	size_t QueueSize = onemsbyTstep * DelayRange;
 	for (int j = 0; j < N; ++j){
 		SingleStateOut.Iin1[j] = (float)Iin1[j] / (1i64 << 32);
 		SingleStateOut.Iin2[j] = (float)Iin2[j] / (1i64 << 32);
@@ -478,8 +478,8 @@ void CachedSpikeStorage(InternalVars &IntVars){
 	auto &CurrentQIndex = IntVars.CurrentQIndex;
 	auto &time = IntVars.Time;
 
-	const int nBins = IntVars.onemsbyTstep * IntVars.DelayRange;
-	const int CacheBuffering = 128;	// Each time a cache of size 64 will be pulled in 
+	const size_t nBins = IntVars.onemsbyTstep * IntVars.DelayRange;
+	const size_t CacheBuffering = 128;	// Each time a cache of size 64 will be pulled in 
 	
 	auto &BinningBuffer = IntVars.BinningBuffer;
 	auto &BufferInsertIndex = IntVars.BufferInsertIndex;
@@ -490,11 +490,11 @@ void CachedSpikeStorage(InternalVars &IntVars){
 	}
 	for (int j = 0; j < N; ++j){
 		if (LastSpikedTimeNeuron[j] == time){
-			int k = preSynNeuronSectionBeg[j];
-			int kend = preSynNeuronSectionEnd[j];
+			size_t k = preSynNeuronSectionBeg[j];
+			size_t kend = preSynNeuronSectionEnd[j];
 
 			if (k != kend){
-				int NoofCurrNeuronSpikes = kend - k;
+				size_t NoofCurrNeuronSpikes = kend - k;
 				MexVector<Synapse>::iterator iSyn = Network.begin() + k;
 				MexVector<Synapse>::iterator iSynEnd = Network.begin() + kend;
 
@@ -606,7 +606,7 @@ void SimulateParallel(
 	const float &StdDev		= IntVars.StdDev;
 	const float &CurrentDecayFactor1	= IntVars.CurrentDecayFactor1;	//Current Decay Factor in the current model (possibly input in future)
 	const float &CurrentDecayFactor2	= IntVars.CurrentDecayFactor2;
-	const int &StatusDisplayInterval = IntVars.StatusDisplayInterval;
+	const size_t &StatusDisplayInterval = IntVars.StatusDisplayInterval;
 
 	// other data members. probably derived from inputs or something
 	// I think should be a constant. (note that it is possible that 
@@ -614,7 +614,7 @@ void SimulateParallel(
 	// CurrentDecayFactor
 
 	size_t QueueSize = SpikeQueue.size();
-	int nSteps = NoOfms*onemsbyTstep;
+	size_t nSteps = NoOfms*onemsbyTstep;
 	size_t N = InputArguments.Neurons.size(), M = InputArguments.Network.size();			
 
 	
@@ -714,7 +714,7 @@ void SimulateParallel(
 	size_t maxSpikeno = 0;
 	tbb::affinity_partitioner apCurrentUpdate;
 	tbb::affinity_partitioner apNeuronSim;
-	int TotalStorageStepSize = (StorageStepSize*onemsbyTstep); // used everywhere
+	size_t TotalStorageStepSize = (StorageStepSize*onemsbyTstep); // used everywhere
 	int epilepsyctr = 0;
 
 	// ------------------------------------------------------------------------------ //
@@ -780,7 +780,7 @@ void SimulateParallel(
 		NeuronCalcTime += std::chrono::duration_cast<std::chrono::microseconds>(NeuronCalcTimeEnd - NeuronCalcTimeBeg).count();
 
 		// Generating RandMat
-		int LoopLimit = (8192 + i <= nSteps) ? 8192 : nSteps - i + 1;
+		size_t LoopLimit = (8192 + i <= nSteps) ? 8192 : nSteps - i + 1;
 		IRandGenTimeBeg = std::chrono::system_clock::now();
 		if (i % 8192 == 0){
 			for (int j = 0; j < LoopLimit; ++j){
@@ -806,12 +806,12 @@ void SimulateParallel(
 		OutputTime += std::chrono::duration_cast<std::chrono::microseconds>(OutputTimeEnd - OutputTimeBeg).count();
 
 		// Status Display Section
-		if (!(i % StatusDisplayInterval)){
+		if (!(time % StatusDisplayInterval)){
 		#ifdef MEX_LIB
-			mexPrintf("Completed  %d steps with Total no. of Spikes = %d\n", i, maxSpikeno);
+			mexPrintf("Completed  %d steps with Total no. of Spikes = %d\n", time/(1000*onemsbyTstep), maxSpikeno);
 			mexEvalString("drawnow");
 		#elif defined MEX_EXE
-			printf("Completed  %d steps with Total no. of Spikes = %d\n", i, maxSpikeno);
+			printf("Completed  %d steps with Total no. of Spikes = %d\n", time / (1000 * onemsbyTstep), maxSpikeno);
 		#endif
 			maxSpikeno = 0;
 		}
