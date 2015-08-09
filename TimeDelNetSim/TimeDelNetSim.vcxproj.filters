@@ -50,5 +50,8 @@
     <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp">
+      <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

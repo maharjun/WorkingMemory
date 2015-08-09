@@ -8,6 +8,7 @@
 #include "..\Headers\NeuronSim.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
+#include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
 
 using namespace std;
 
@@ -118,9 +119,12 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	size_t N = mxGetNumberOfElements(mxGetField(MatlabInputStruct, 0, "a"));
 	size_t M = mxGetNumberOfElements(mxGetField(MatlabInputStruct, 0, "NStart"));
 
-	InputArgList.onemsbyTstep = *reinterpret_cast<int *>(mxGetData(mxGetField(MatlabInputStruct, 0, "onemsbyTstep")));
-	InputArgList.NoOfms = *reinterpret_cast<int *>(mxGetData(mxGetField(MatlabInputStruct, 0, "NoOfms")));
-	InputArgList.DelayRange = *reinterpret_cast<int *>(mxGetData(mxGetField(MatlabInputStruct, 0, "DelayRange")));
+	// get compulsory scalars
+	getInputfromStruct(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, true);
+	getInputfromStruct(MatlabInputStruct, "NoOfms"      , InputArgList.NoOfms      , true);
+	getInputfromStruct(MatlabInputStruct, "DelayRange"  , InputArgList.DelayRange  , true);
+
+	// set default values of optional scalars / parameters
 	InputArgList.CurrentQIndex = 0;
 	InputArgList.Time = 0;
 	InputArgList.StorageStepSize = DEFAULT_STORAGE_STEP;
@@ -134,142 +138,62 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	mxArray *   genmxArrayPtr;      // Generic mxArray Pointer used around the place to access data
 
 	// Initializing neuron specification structure array Neurons
-	genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(mxGetField(MatlabInputStruct, 0, "a")));	// a[N]
-	genFloatPtr[1] = reinterpret_cast<float *>(mxGetData(mxGetField(MatlabInputStruct, 0, "b")));	// b[N]
-	genFloatPtr[2] = reinterpret_cast<float *>(mxGetData(mxGetField(MatlabInputStruct, 0, "c")));	// c[N]
-	genFloatPtr[3] = reinterpret_cast<float *>(mxGetData(mxGetField(MatlabInputStruct, 0, "d")));	// d[N]
-
-	InputArgList.Neurons = MexVector<Neuron>(N);
-
-	for (int i = 0; i < N; ++i){
-		InputArgList.Neurons[i].a = genFloatPtr[0][i];
-		InputArgList.Neurons[i].b = genFloatPtr[1][i];
-		InputArgList.Neurons[i].c = genFloatPtr[2][i];
-		InputArgList.Neurons[i].d = genFloatPtr[3][i];
-	}
+	getInputfromStruct(MatlabInputStruct, "a b c d", InputArgList.Neurons, 
+		FFL([](StructArgTable &StructFields, Neuron &DestElem){
+			DestElem.a = *(float*)StructFields.find(string("a"))->second.first;
+			DestElem.b = *(float*)StructFields.find(string("b"))->second.first;
+			DestElem.c = *(float*)StructFields.find(string("c"))->second.first;
+			DestElem.d = *(float*)StructFields.find(string("d"))->second.first;
+		}),
+		2, "required_size", N, "is_required");
 
 	// Initializing network (Synapse) specification structure array Network
-	genIntPtr[0]   = reinterpret_cast<int   *>(mxGetData(mxGetField(MatlabInputStruct, 0, "NStart")));	  // NStart[M]
-	genIntPtr[1]   = reinterpret_cast<int   *>(mxGetData(mxGetField(MatlabInputStruct, 0, "NEnd")));      // NEnd[M]
-	genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(mxGetField(MatlabInputStruct, 0, "Weight")));    // Weight[M]
-	genFloatPtr[1] = reinterpret_cast<float *>(mxGetData(mxGetField(MatlabInputStruct, 0, "Delay")));     // Delay[M]
-
-	InputArgList.Network = MexVector<Synapse>(M);
-
-	for (int i = 0; i < M; ++i){
-		InputArgList.Network[i].NStart = genIntPtr[0][i];
-		InputArgList.Network[i].NEnd = genIntPtr[1][i];
-		InputArgList.Network[i].Weight = genFloatPtr[0][i];
-		InputArgList.Network[i].DelayinTsteps = (int(genFloatPtr[1][i] * InputArgList.onemsbyTstep + 0.5) > 0) ?
-			int(genFloatPtr[1][i] * InputArgList.onemsbyTstep + 0.5) : 1;
-	}
+	getInputfromStruct(MatlabInputStruct, "NStart NEnd Weight Delay", InputArgList.Network,
+		FFL([&](StructArgTable &StructFields, Synapse &DestElem){
+			DestElem.NStart        = *(int*)StructFields.find(string("NStart"))->second.first;
+			DestElem.NEnd          = *(int*)StructFields.find(string("NEnd"))->second.first;
+			DestElem.Weight        = *(float*)StructFields.find(string("Weight"))->second.first;
+			DestElem.DelayinTsteps = *(float*)StructFields.find(string("Delay"))->second.first * InputArgList.onemsbyTstep + 0.5;
+		}),
+		2, "required_size", M, "is_required");
 
 	// Initializing Time
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "Time");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr))
-		InputArgList.Time = *reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
+	getInputfromStruct(MatlabInputStruct, "Time", InputArgList.Time);
 
 	// Initializing StorageStepSize
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "StorageStepSize");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr))
-		InputArgList.StorageStepSize = *reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
+	getInputfromStruct(MatlabInputStruct, "StorageStepSize", InputArgList.StorageStepSize);
 
 	// Initializing StatusDisplayInterval
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "StatusDisplayInterval");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr))
-		InputArgList.StatusDisplayInterval = *reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
+	getInputfromStruct(MatlabInputStruct, "StatusDisplayInterval", InputArgList.StatusDisplayInterval);
 
 	// Initializing InterestingSyns
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "InterestingSyns");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		size_t NumElems = mxGetNumberOfElements(genmxArrayPtr);
-		genIntPtr[0] = reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
-		InputArgList.InterestingSyns = MexVector<int>(NumElems);
-		InputArgList.InterestingSyns.copyArray(0, genIntPtr[0], NumElems);
-	}
+	getInputfromStruct(MatlabInputStruct, "InterestingSyns", InputArgList.InterestingSyns);
 
 	// Initializing V, U and Iin1, Iin2
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "V");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.V = MexVector<float>(N);
-		genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(genmxArrayPtr));
-		InputArgList.V.copyArray(0, genFloatPtr[0], N);
-	}
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "U");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.U = MexVector<float>(N);
-		genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(genmxArrayPtr));
-		InputArgList.U.copyArray(0, genFloatPtr[0], N);
-	}
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "Iin1");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.Iin1 = MexVector<float>(N);
-		genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(genmxArrayPtr));
-		InputArgList.Iin1.copyArray(0, genFloatPtr[0], N);
-	}
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "Iin2");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.Iin2 = MexVector<float>(N);
-		genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(genmxArrayPtr));
-		InputArgList.Iin2.copyArray(0, genFloatPtr[0], N);
-	}
+	getInputfromStruct(MatlabInputStruct, "V"   , InputArgList.V, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "U"   , InputArgList.U, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "Iin1", InputArgList.Iin1, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "Iin2", InputArgList.Iin2, 1, "required_size", N);
 
 	// Initializing WeightDeriv
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "WeightDeriv");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.WeightDeriv = MexVector<float>(M);
-		genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(genmxArrayPtr));
-		InputArgList.WeightDeriv.copyArray(0, genFloatPtr[0], M);
-	}
+	getInputfromStruct(MatlabInputStruct, "WeightDeriv", InputArgList.WeightDeriv, 1, "required_size", M);
 
 	// Initializing Irand and GenState (Random current related)
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "Irand");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.Irand = MexVector<float>(N);
-		genFloatPtr[0] = reinterpret_cast<float *>(mxGetData(genmxArrayPtr));
-		InputArgList.Irand.copyArray(0, genFloatPtr[0], N);
-	}
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "GenState");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		InputArgList.GenState = MexVector<uint32_t>(4);
-		genUIntPtr[0] = reinterpret_cast<uint32_t *>(mxGetData(genmxArrayPtr));
-		InputArgList.GenState.copyArray(0, genUIntPtr[0], 4);
-	}
+	getInputfromStruct(MatlabInputStruct, "Irand", InputArgList.Irand, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "GenState", InputArgList.GenState, 1, "required_size", 4);
 
-	// Initializing CurrentQueueIndex
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "CurrentQIndex");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr))
-		InputArgList.CurrentQIndex = *reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
-	
-	// Initializing InitSpikeQueue
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "SpikeQueue");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		mxArray **SpikeQueueArr = reinterpret_cast<mxArray **>(mxGetData(genmxArrayPtr));
-	int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
-		InputArgList.SpikeQueue = MexVector<MexVector<int> >(SpikeQueueSize);
-		for (int i = 0; i < SpikeQueueSize; ++i){
-			size_t NumOfSpikes = mxGetNumberOfElements(SpikeQueueArr[i]);
-			InputArgList.SpikeQueue[i] = MexVector<int>(NumOfSpikes);
-			int * CurrQueueArr = reinterpret_cast<int *>(mxGetData(SpikeQueueArr[i]));
-			InputArgList.SpikeQueue[i].copyArray(0, CurrQueueArr, NumOfSpikes);
-		}
-	}
+	// Initializing CurrentQIndex
+	getInputfromStruct(MatlabInputStruct, "CurrentQIndex", InputArgList.CurrentQIndex);
 
-	// Initializing InitLastSpikedTimeNeuron
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "LSTNeuron");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		genIntPtr[0] = reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
-		InputArgList.LSTNeuron = MexVector<int>(N);
-		InputArgList.LSTNeuron.copyArray(0, genIntPtr[0], N);
-	}
+	// Initializing SpikeQueue
+		int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
+	getInputfromStruct(MatlabInputStruct, "SpikeQueue", InputArgList.SpikeQueue, 1, "required_size", SpikeQueueSize);
 
-	// Initializing InitLastSpikedTimeSyn
-	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "LSTSyn");
-	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
-		genIntPtr[0] = reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
-		InputArgList.LSTSyn = MexVector<int>(M);
-		InputArgList.LSTSyn.copyArray(0, genIntPtr[0], M);
-	}
+	// Initializing LastSpikedTimeNeuron
+	getInputfromStruct(MatlabInputStruct, "LSTNeuron", InputArgList.LSTNeuron, 1, "required_size", N);
+
+	// Initializing LastSpikedTimeSyn
+	getInputfromStruct(MatlabInputStruct, "LSTSyn", InputArgList.LSTSyn, 1, "required_size", M);
 
 	// Initializing OutputControl
 	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "OutputControl");

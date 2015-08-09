@@ -136,6 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp" />
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp" />
     <ClInclude Include="..\MexMemoryInterfacing\Headers\MexMem.hpp" />
     <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp" />
     <ClInclude Include="Headers\Network.hpp" />
