@@ -165,7 +165,7 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 	size_t TimeDimLen;  // beta is the time offset from Tbeg which 
 	// corresponds to the first valid storage location
 	if (StorageStepSize){
-		TimeDimLen = (nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
+		TimeDimLen = (nSteps >= beta)?(nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1 : 0;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
 	}
 	else{
 		TimeDimLen = nSteps;
@@ -222,7 +222,7 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	auto beta = IntVars.beta;
 
 	if (IntVars.StorageStepSize){
-		TimeDimLen = (nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
+		TimeDimLen = (nSteps >= beta) ? (nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1 : 0;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
 	}
 	else{
 		TimeDimLen = nSteps;
