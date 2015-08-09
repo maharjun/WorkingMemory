@@ -8,14 +8,13 @@
 #include <type_traits>
 #include <iostream>
 #include <Windows.h>
-#include "..\Headers\NeuronSim.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "MexFunctionInterface.cpp"
 
 using namespace std;
 
-typedef mxArray* mxArrayPtr;
-
+// This is to remove the definition of printf which makes it equal to mexPrintf
+#undef printf
 int main(){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION

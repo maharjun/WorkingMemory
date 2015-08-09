@@ -47,5 +47,8 @@
     <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp">
       <Filter>Header Files\RandomNumGen</Filter>
     </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp">
+      <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

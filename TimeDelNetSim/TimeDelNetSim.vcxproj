@@ -135,6 +135,7 @@
     <ClCompile Include="Source\ParallelStructuresII_mex.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp" />
     <ClInclude Include="..\MexMemoryInterfacing\Headers\MexMem.hpp" />
     <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp" />
     <ClInclude Include="Headers\Network.hpp" />

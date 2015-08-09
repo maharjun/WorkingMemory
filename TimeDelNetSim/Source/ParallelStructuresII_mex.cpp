@@ -10,6 +10,7 @@
 #include "..\Headers\Network.hpp"
 #include "..\Headers\NeuronSim.hpp"
 #include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
+#include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 
 #include <emmintrin.h>
 #include <smmintrin.h>
@@ -758,7 +759,7 @@ void SimulateParallel(
 			#ifdef MEX_LIB
 				mexErrMsgTxt("Epileptic shit");
 			#elif defined MEX_EXE
-				printf("Epilepsy Nyuh!!\n");
+				WriteOutput("Epilepsy Nyuh!!\n");
 			#endif
 				return;
 			}
@@ -807,12 +808,7 @@ void SimulateParallel(
 
 		// Status Display Section
 		if (!(time % StatusDisplayInterval)){
-		#ifdef MEX_LIB
-			mexPrintf("Completed  %d steps with Total no. of Spikes = %d\n", time/(1000*onemsbyTstep), maxSpikeno);
-			mexEvalString("drawnow");
-		#elif defined MEX_EXE
-			printf("Completed  %d steps with Total no. of Spikes = %d\n", time / (1000 * onemsbyTstep), maxSpikeno);
-		#endif
+			WriteOutput("Completed  %d steps with Total no. of Spikes = %d\n", time / (1000 * onemsbyTstep), maxSpikeno);
 			maxSpikeno = 0;
 		}
 	}
@@ -822,11 +818,11 @@ void SimulateParallel(
 		IntVars.DoSingleStateOutput(FinalStateOutput);
 	}
 
-	cout << "CurrentExt Generation Time = " << IExtGenTime / 1000 << "millisecs" << endl;
-	cout << "CurrentRand Generation Time = " << IRandGenTime / 1000 << "millisecs" << endl;
-	cout << "Current Update Time = " << IUpdateTime / 1000 << "millisecs" << endl;
-	cout << "Spike Storage Time = " << SpikeStoreTime / 1000 << "millisecs" << endl;
-	cout << "Nuron Calculation Time = " << NeuronCalcTime / 1000 << "millisecs" << endl;
-	cout << "Output Time = " << OutputTime / 1000 << "millisecs" << endl;
+	WriteOutput("CurrentExt Generation Time = %d millisecs\n", IExtGenTime / 1000);
+	WriteOutput("CurrentRand Generation Time = %d millisecs\n", IRandGenTime / 1000);
+	WriteOutput("Current Update Time = %d millisecs\n", IUpdateTime / 1000);
+	WriteOutput("Spike Storage Time = %d millisecs\n", SpikeStoreTime / 1000);
+	WriteOutput("Nuron Calculation Time = %d millisecs\n", NeuronCalcTime / 1000);
+	WriteOutput("Output Time = %d millisecs\n", OutputTime / 1000);
 }
 

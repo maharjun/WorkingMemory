@@ -7,7 +7,7 @@
 #include <type_traits>
 #include "..\Headers\NeuronSim.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
-
+#include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 
 using namespace std;
 
@@ -240,12 +240,12 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "CurrentQIndex");
 	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr))
 		InputArgList.CurrentQIndex = *reinterpret_cast<int *>(mxGetData(genmxArrayPtr));
-
+	
 	// Initializing InitSpikeQueue
 	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "SpikeQueue");
 	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
 		mxArray **SpikeQueueArr = reinterpret_cast<mxArray **>(mxGetData(genmxArrayPtr));
-		int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
+	int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
 		InputArgList.SpikeQueue = MexVector<MexVector<int> >(SpikeQueueSize);
 		for (int i = 0; i < SpikeQueueSize; ++i){
 			size_t NumOfSpikes = mxGetNumberOfElements(SpikeQueueArr[i]);
@@ -278,60 +278,6 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 		InputArgList.OutputControl = getOutputControl(OutputControlSequence);
 		mxFree(OutputControlSequence);
 	}
-}
-
-template<typename T> mxArray * assignmxArray(T &ScalarOut, mxClassID ClassID){
-
-	mxArray * ReturnPointer;
-	if (is_arithmetic<T>::value){
-		ReturnPointer = mxCreateNumericMatrix_730(1, 1, ClassID, mxREAL);
-		*reinterpret_cast<T *>(mxGetData(ReturnPointer)) = ScalarOut;
-	}
-	else{
-		ReturnPointer = mxCreateNumericMatrix_730(0, 0, ClassID, mxREAL);
-	}
-
-	return ReturnPointer;
-}
-
-template<typename T> mxArray * assignmxArray(MexMatrix<T> &VectorOut, mxClassID ClassID){
-
-	mxArray * ReturnPointer = mxCreateNumericMatrix_730(0, 0, ClassID, mxREAL);
-	if (VectorOut.ncols() && VectorOut.nrows()){
-		mxSetM(ReturnPointer, VectorOut.ncols());
-		mxSetN(ReturnPointer, VectorOut.nrows());
-		mxSetData(ReturnPointer, VectorOut.releaseArray());
-	}
-
-	return ReturnPointer;
-}
-
-template<typename T> mxArray * assignmxArray(MexVector<T> &VectorOut, mxClassID ClassID){
-
-	mxArray * ReturnPointer = mxCreateNumericMatrix_730(0, 0, ClassID, mxREAL);
-	if (VectorOut.size()){
-		mxSetM(ReturnPointer, VectorOut.size());
-		mxSetN(ReturnPointer, 1);
-		mxSetData(ReturnPointer, VectorOut.releaseArray());
-	}
-	return ReturnPointer;
-}
-
-template<typename T> mxArray * assignmxArray(MexVector<MexVector<T> > &VectorOut, mxClassID ClassID){
-	
-	mxArray * ReturnPointer;
-	if (VectorOut.size()){
-		ReturnPointer = mxCreateCellMatrix(VectorOut.size(), 1);
-		
-		size_t VectVectSize = VectorOut.size();
-		for (int i = 0; i < VectVectSize; ++i){
-			mxSetCell(ReturnPointer, i, assignmxArray(VectorOut[i], ClassID));
-		}
-	}
-	else{
-		ReturnPointer = mxCreateCellMatrix_730(0, 0);
-	}
-	return ReturnPointer;
 }
 
 mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
@@ -511,12 +457,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	}
 
 	chrono::system_clock::time_point TEnd = chrono::system_clock::now();
-#ifdef MEX_LIB
-	mexPrintf("The Time taken = %d milliseconds\n", chrono::duration_cast<chrono::milliseconds>(TEnd - TStart).count());
-	mexEvalString("drawnow");
-#elif defined MEX_EXE
-	printf("The Time taken = %d milliseconds\n", chrono::duration_cast<chrono::milliseconds>(TEnd - TStart).count());
-#endif
+	WriteOutput("The Time taken = %d milliseconds\n", chrono::duration_cast<chrono::milliseconds>(TEnd - TStart).count());
+
 	mwSize StructArraySize[2] = { 1, 1 };
 	
 	plhs[0] = putOutputToMatlabStruct(PureOutput);
