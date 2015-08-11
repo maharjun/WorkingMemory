@@ -578,11 +578,11 @@ void SimulateParallel(
 	MexVector<float>			&Vnow                 = IntVars.V;
 	MexVector<float>			&Unow                 = IntVars.U;
 	MexVector<int>				&InterestingSyns      = IntVars.InterestingSyns;
-	atomicLongVect				&Iin1					= IntVars.Iin1;
-	atomicLongVect				&Iin2					= IntVars.Iin2;
-	BandLimGaussVect			&Irand					= IntVars.Irand;
-	MexMatrix<float>			&RandMat				= IntVars.RandMat;
-	MexMatrix<uint32_t>			&GenMat					= IntVars.GenMat;
+	atomicLongVect				&Iin1                 = IntVars.Iin1;
+	atomicLongVect				&Iin2                 = IntVars.Iin2;
+	BandLimGaussVect			&Irand                = IntVars.Irand;
+	MexMatrix<float>			&RandMat              = IntVars.RandMat;
+	MexMatrix<uint32_t>			&GenMat               = IntVars.GenMat;
 	MexVector<float>			&Iext                 = IntVars.Iext;
 	MexVector<MexVector<int> >	&SpikeQueue           = IntVars.SpikeQueue;
 	MexVector<int>				&LastSpikedTimeNeuron = IntVars.LSTNeuron;

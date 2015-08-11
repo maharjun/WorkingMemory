@@ -119,17 +119,26 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	size_t N = mxGetNumberOfElements(mxGetField(MatlabInputStruct, 0, "a"));
 	size_t M = mxGetNumberOfElements(mxGetField(MatlabInputStruct, 0, "NStart"));
 
-	// get compulsory scalars
+	// set Cumpulsory Simulation Parameters
 	getInputfromStruct(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, true);
 	getInputfromStruct(MatlabInputStruct, "NoOfms"      , InputArgList.NoOfms      , true);
 	getInputfromStruct(MatlabInputStruct, "DelayRange"  , InputArgList.DelayRange  , true);
 
-	// set default values of optional scalars / parameters
-	InputArgList.CurrentQIndex = 0;
-	InputArgList.Time = 0;
+	// set default values of Optional Simulation Parameters
 	InputArgList.StorageStepSize = DEFAULT_STORAGE_STEP;
 	InputArgList.OutputControl = 0;
 	InputArgList.StatusDisplayInterval = DEFAULT_STATUS_DISPLAY_STEP;
+	
+	// set default values of Optional Simulation Algorithm Parameters
+	InputArgList.I0                  = 1.0f;
+	InputArgList.CurrentDecayFactor1 = powf(9.0f / 10, 1.0f / InputArgList.onemsbyTstep);
+	InputArgList.CurrentDecayFactor2 = powf(9.0f / (10.0f), 1.0f / (4 * InputArgList.onemsbyTstep));
+	InputArgList.alpha               = 0.5f;
+	InputArgList.StdDev              = 3.5;
+
+	// set default values for Scalar State Variables
+	InputArgList.CurrentQIndex = 0;
+	InputArgList.Time = 0;
 
 	float*      genFloatPtr[4];     // Generic float Pointers used around the place to access data
 	int*        genIntPtr[2];       // Generic int Pointers used around the place to access data
@@ -157,14 +166,21 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 		}),
 		2, "required_size", M, "is_required");
 
+	// Setting Values for Optional Simulation Algorithm Parameters
+	getInputfromStruct(MatlabInputStruct, "I0", InputArgList.I0);
+	getInputfromStruct(MatlabInputStruct, "CurrentDecayFactor1", InputArgList.CurrentDecayFactor1);
+	getInputfromStruct(MatlabInputStruct, "CurrentDecayFactor2", InputArgList.CurrentDecayFactor2);
+	getInputfromStruct(MatlabInputStruct, "alpha", InputArgList.alpha);
+	getInputfromStruct(MatlabInputStruct, "StdDev", InputArgList.StdDev);
+
 	// Initializing Time
-	getInputfromStruct(MatlabInputStruct, "Time", InputArgList.Time);
+	getInputfromStruct<int, size_t>(MatlabInputStruct, "Time", InputArgList.Time);
 
 	// Initializing StorageStepSize
-	getInputfromStruct(MatlabInputStruct, "StorageStepSize", InputArgList.StorageStepSize);
+	getInputfromStruct<int, size_t>(MatlabInputStruct, "StorageStepSize", InputArgList.StorageStepSize);
 
 	// Initializing StatusDisplayInterval
-	getInputfromStruct(MatlabInputStruct, "StatusDisplayInterval", InputArgList.StatusDisplayInterval);
+	getInputfromStruct<int, size_t>(MatlabInputStruct, "StatusDisplayInterval", InputArgList.StatusDisplayInterval);
 
 	// Initializing InterestingSyns
 	getInputfromStruct(MatlabInputStruct, "InterestingSyns", InputArgList.InterestingSyns);
