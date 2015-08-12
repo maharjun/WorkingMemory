@@ -120,9 +120,9 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	size_t M = mxGetNumberOfElements(mxGetField(MatlabInputStruct, 0, "NStart"));
 
 	// set Cumpulsory Simulation Parameters
-	getInputfromStruct(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, true);
-	getInputfromStruct(MatlabInputStruct, "NoOfms"      , InputArgList.NoOfms      , true);
-	getInputfromStruct(MatlabInputStruct, "DelayRange"  , InputArgList.DelayRange  , true);
+	getInputfromStruct(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, 1, "is_required");
+	getInputfromStruct(MatlabInputStruct, "NoOfms"      , InputArgList.NoOfms      , 1, "is_required");
+	getInputfromStruct(MatlabInputStruct, "DelayRange"  , InputArgList.DelayRange  , 1, "is_required");
 
 	// set default values of Optional Simulation Parameters
 	InputArgList.StorageStepSize = DEFAULT_STORAGE_STEP;
