@@ -7,7 +7,6 @@
 #include <chrono>
 #include <type_traits>
 #include <iostream>
-#include <Windows.h>
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "MexFunctionInterface.cpp"
 
@@ -41,14 +40,6 @@ int main(){
 	
 	mxArrayPtr lhs[4] = { nullptr, nullptr, nullptr, nullptr }, 
 			   rhs[1] = { Input };
-
-	HANDLE XHandle = GetCurrentProcess();
-	ULONG_PTR ProcessAffMask, SystemAffMask;
-	
-	GetProcessAffinityMask(XHandle, &ProcessAffMask, &SystemAffMask);
-	cout << std::hex << ProcessAffMask << "  " << std::hex << SystemAffMask << endl;
-
-	system("pause");
 
 	OutputFilePtr = matOpen(OutputFilePath, "r");
 	while (OutputFilePtr){

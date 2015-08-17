@@ -6,6 +6,7 @@
 #include <fstream>
 #include <chrono>
 #include <cmath>
+
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\Headers\Network.hpp"
 #include "..\Headers\NeuronSim.hpp"
@@ -616,7 +617,7 @@ void SimulateParallel(
 
 	size_t QueueSize = SpikeQueue.size();
 	size_t nSteps = NoOfms*onemsbyTstep;
-	size_t N = InputArguments.Neurons.size(), M = InputArguments.Network.size();			
+	size_t N = IntVars.Neurons.size(), M = IntVars.Network.size();			
 
 	
 	// VARIOuS ARRAYS USED apart from those in the argument list and Output List.
