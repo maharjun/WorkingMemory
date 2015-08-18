@@ -12,7 +12,7 @@
 #include "..\Headers\NeuronSim.hpp"
 #include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
-
+#include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
 #include <emmintrin.h>
 #include <smmintrin.h>
 
@@ -241,49 +241,24 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 		// The vector is initialized to size zero regardless. the If condition is 
 		// just kept for code conformity
 }
-void FinalStateStruct::initialize(const InternalVars &IntVars){
+void SingleStateStruct::initialize(const InternalVars &IntVars){
 	auto OutputControl	= IntVars.OutputControl;
 	auto DelayRange		= IntVars.DelayRange;
 	auto onemsbyTstep	= IntVars.onemsbyTstep;
 	auto N				= IntVars.N;
 	auto M				= IntVars.M;
 
-	if (OutputControl & OutOps::FINAL_STATE_REQ){
-		this->V = MexVector<float>(N);
-		this->U = MexVector<float>(N);
-		this->Iin1 = MexVector<float>(N);
-		this->Iin2 = MexVector<float>(N);
-		this->WeightDeriv = MexVector<float>(M);
-		this->Irand = MexVector<float>(N);
-		this->GenState = MexVector<uint32_t>(4);
-		this->Weight = MexVector<float>(M);
-		this->LSTNeuron = MexVector<int>(N);
-		this->LSTSyn = MexVector<int>(M);
-		this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
-	}
-	this->CurrentQIndex = -1;
-	this->Time = -1;
-}
-void InitialStateStruct::initialize(const InternalVars &IntVars){
-	auto OutputControl = IntVars.OutputControl;
-	auto DelayRange = IntVars.DelayRange;
-	auto onemsbyTstep = IntVars.onemsbyTstep;
-	auto N = IntVars.N;
-	auto M = IntVars.M;
-
-	if (OutputControl & OutOps::INITIAL_STATE_REQ){
-		this->V = MexVector<float>(N);
-		this->U = MexVector<float>(N);
-		this->Iin1 = MexVector<float>(N);
-		this->Iin2 = MexVector<float>(N);
-		this->WeightDeriv = MexVector<float>(M);
-		this->GenState = MexVector<uint32_t>(4);
-		this->Weight = MexVector<float>(M);
-		this->Weight = MexVector<float>(M);
-		this->LSTNeuron = MexVector<int>(N);
-		this->LSTSyn = MexVector<int>(M);
-		this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
-	}
+	this->V = MexVector<float>(N);
+	this->U = MexVector<float>(N);
+	this->Iin1 = MexVector<float>(N);
+	this->Iin2 = MexVector<float>(N);
+	this->WeightDeriv = MexVector<float>(M);
+	this->Irand = MexVector<float>(N);
+	this->GenState = MexVector<uint32_t>(4);
+	this->Weight = MexVector<float>(M);
+	this->LSTNeuron = MexVector<int>(N);
+	this->LSTSyn = MexVector<int>(M);
+	this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
 	this->CurrentQIndex = -1;
 	this->Time = -1;
 }
@@ -465,6 +440,53 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 	SingleStateOut.LSTSyn = LSTSyn;
 	SingleStateOut.Time = Time;
 }
+void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
+	
+	// Input Vectors
+	InputStateOut.NStart.resize(M);
+	InputStateOut.NEnd  .resize(M);
+	InputStateOut.Weight.resize(M);
+	InputStateOut.Delay .resize(M);
+	
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart.begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NStart       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd  .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NEnd         ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.Weight.begin(), FFL([ ](Synapse &Syn)->float{return Syn.Weight       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay .begin(), FFL([&](Synapse &Syn)->float{return (float)Syn.DelayinTsteps / onemsbyTstep; }));
+
+	InputStateOut.a.resize(N);
+	InputStateOut.b.resize(N);
+	InputStateOut.c.resize(N);
+	InputStateOut.d.resize(N);
+
+	MexTransform(Neurons.begin(), Neurons.end(), InputStateOut.a.begin(), FFL([](Neuron &Neu)->float{return Neu.a; }));
+	MexTransform(Neurons.begin(), Neurons.end(), InputStateOut.b.begin(), FFL([](Neuron &Neu)->float{return Neu.b; }));
+	MexTransform(Neurons.begin(), Neurons.end(), InputStateOut.c.begin(), FFL([](Neuron &Neu)->float{return Neu.c; }));
+	MexTransform(Neurons.begin(), Neurons.end(), InputStateOut.d.begin(), FFL([](Neuron &Neu)->float{return Neu.d; }));
+
+	InputStateOut.InterestingSyns = InterestingSyns;
+
+	// Compulsory Simulation Parameters
+	InputStateOut.onemsbyTstep = onemsbyTstep;
+	InputStateOut.NoOfms       = NoOfms;
+	InputStateOut.DelayRange   = DelayRange;
+
+	// Optional Simulation Parameters
+	InputStateOut.OutputControlString   = OutputControlString   ;
+	InputStateOut.OutputControl         = OutputControl         ;
+	InputStateOut.StorageStepSize       = StorageStepSize       ;
+	InputStateOut.StatusDisplayInterval = StatusDisplayInterval ;
+
+	// Optional Simulation Algorithm Parameters
+	InputStateOut.I0                  = I0                  ;
+	InputStateOut.CurrentDecayFactor1 = CurrentDecayFactor1 ;
+	InputStateOut.CurrentDecayFactor2 = CurrentDecayFactor2 ;
+	InputStateOut.alpha               = alpha               ;
+	InputStateOut.StdDev              = StdDev              ;
+
+	// Initializing and Assigning the State Variables
+	InputStateOut.InitialState.initialize(*this);
+	DoSingleStateOutput(InputStateOut.InitialState);
+}
 
 void CachedSpikeStorage(InternalVars &IntVars){
 
@@ -563,8 +585,8 @@ void SimulateParallel(
 	InputArgs &&InputArguments,
 	OutputVarsStruct &PureOutputs,
 	StateVarsOutStruct &StateVarsOutput,
-	FinalStateStruct &FinalStateOutput,
-	InitialStateStruct &InitialStateOutput
+	SingleStateStruct &FinalStateOutput,
+	InputArgs &InputStateOutput
 )
 {
 	// Aliasing Input Arguments Into Appropriate
@@ -645,8 +667,7 @@ void SimulateParallel(
 
 	StateVarsOutput.initialize(IntVars);
 	PureOutputs.initialize(IntVars);
-	FinalStateOutput.initialize(IntVars);
-	InitialStateOutput.initialize(IntVars);
+	if (OutputControl & OutOps::FINAL_STATE_REQ) FinalStateOutput.initialize(IntVars);
 	
 	//---------------------------- Initializing the Intermediate Arrays ----------------------------//
 	CountingSort(N, Network, AuxArray);	// Perform counting sort by (NEnd, NStart)
@@ -711,7 +732,7 @@ void SimulateParallel(
 	// Giving Initial State if Asked For
 	
 	if (OutputControl & OutOps::INITIAL_STATE_REQ){
-		IntVars.DoSingleStateOutput(InitialStateOutput);
+		IntVars.DoInputStateOutput(InputStateOutput);
 	}
 	size_t maxSpikeno = 0;
 	tbb::affinity_partitioner apCurrentUpdate;

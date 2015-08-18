@@ -70,9 +70,9 @@ cd MatlabSource
 %% Get Detailed vector from Initial State 
 % This is to check correctness of initial state return with default inputs
 
-load('../Data/SimResults1000DebugSparseLong.mat', 'InitState');
+load('../Data/SimResults1000DebugSparseLong.mat', 'InputState');
 
-% Setting up input settings
+% Setting up output settings
 OutputOptions = { ...
 	'V', ...
 	'Iin', ...
@@ -86,25 +86,11 @@ OutputOptions = { ...
 clear InputStruct;
 
 % Getting Midway state
-InputStruct = ConvertStatetoInitialCond(InitState);
-InputStruct.a = single(a);
-InputStruct.b = single(b);
-InputStruct.c = single(c);
-InputStruct.d = single(d);
+InputStruct = InputState;
 
-InputStruct.NStart = int32(NStartVect);
-InputStruct.NEnd   = int32(NEndVect);
-InputStruct.Weight = single(Weights);
-InputStruct.Delay  = single(Delays);
-
-InputStruct.alpha = single(0.3);
-InputStruct.I0 = single(1.3);
-InputStruct.onemsbyTstep          = int32(4);
 InputStruct.NoOfms                = int32(2000);
-InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
-InputStruct.StatusDisplayInterval = int32(8000);
 
 InputStruct.OutputFile = 'SimResults1000DebugDetailedfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');
@@ -116,21 +102,21 @@ cd MatlabSource
 
 % Loading and renaming variables for detailed simulation
 load('../Data/SimResults1000DebugDetailedfromInit.mat');
-clear OutputVarsDetailed StateVarsDetailed InitStateDetailed FinalStateDetailed;
+clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
 OutputVarsDetailed = OutputVars;
 StateVarsDetailed = StateVars;
-InitStateDetailed = InitState;
+InputStateDetailed = InputState;
 FinalStateDetailed = FinalState;
-clear OutputVars StateVars InitState FinalState;
+clear OutputVars StateVars InputState FinalState;
 
 % Loading and renaming variables for sparse simulation
 load('../Data/SimResults1000DebugSparseLong.mat');
-clear OutputVarsSparse StateVarsSparse InitStateSparse FinalStateSparse;
+clear OutputVarsSparse StateVarsSparse InputStateSparse FinalStateSparse;
 OutputVarsSparse = OutputVars;
 StateVarsSparse = StateVars;
-InitStateSparse = InitState;
+InputStateSparse = InputState;
 FinalStateSparse = FinalState;
-clear OutputVars StateVars InitState FinalState;
+clear OutputVars StateVars InputState FinalState;
 
 %% Performing Relevant Tests
 max(abs(StateVarsSparse.V(:,1) - StateVarsDetailed.V(:, 4000)))
@@ -150,25 +136,11 @@ OutputOptions = { ...
 clear InputStruct;
 
 % Getting Midway state
-InputStruct = ConvertStatetoInitialCond(FinalStateDetailed);
-InputStruct.a = single(a);
-InputStruct.b = single(b);
-InputStruct.c = single(c);
-InputStruct.d = single(d);
-
-InputStruct.NStart = int32(NStartVect);
-InputStruct.NEnd   = int32(NEndVect);
-InputStruct.Weight = single(Weights);
-InputStruct.Delay  = single(Delays);
-
-InputStruct.alpha = single(0.3);
-InputStruct.I0 = single(1.3);
-InputStruct.onemsbyTstep          = int32(4);
+InputStruct                       = InputStateDetailed;
+InputStruct.InitialState          = FinalStateDetailed;
 InputStruct.NoOfms                = int32(2000);
-InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
-InputStruct.StatusDisplayInterval = int32(8000);
 
 InputStruct.OutputFile = 'SimResults1000DebugDetailedfromFinal.mat';
 save('../Data/InputData.mat', 'InputStruct');
@@ -180,7 +152,7 @@ load('../Data/SimResults1000DebugDetailedfromFinal.mat');
 clear OutputVarsDetailed StateVarsDetailed InitStateDetailed FinalStateDetailed;
 OutputVarsDetailed = OutputVars;
 StateVarsDetailed = StateVars;
-InitStateDetailed = InitState;
+InputStateDetailed = InputState;
 FinalStateDetailed = FinalState;
 clear OutputVars StateVars InitState FinalState;
 
@@ -204,22 +176,9 @@ OutputOptions = { ...
 clear InputStruct;
 
 % Getting Midway state
-InputStruct = ConvertStatetoInitialCond(StateVarsSparse, 4*4000);
-InputStruct.a = single(a);
-InputStruct.b = single(b);
-InputStruct.c = single(c);
-InputStruct.d = single(d);
-
-InputStruct.NStart = int32(NStartVect);
-InputStruct.NEnd   = int32(NEndVect);
-InputStruct.Weight = single(Weights);
-InputStruct.Delay  = single(Delays);
-
-InputStruct.alpha = single(0.3);
-InputStruct.I0 = single(1.3);
-InputStruct.onemsbyTstep          = int32(4);
+InputStruct = InputStateSparse;
+InputStruct.InitialState = getSingleState(StateVarsSparse, 4*4000);
 InputStruct.NoOfms                = int32(2000);
-InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval = int32(8000);
@@ -231,10 +190,10 @@ cd ..
 cd MatlabSource
 %% Loading Relevant Data
 load('../Data/SimResults1000DebugDetailedfromInter.mat');
-clear OutputVarsDetailed StateVarsDetailed InitStateDetailed FinalStateDetailed;
+clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
 OutputVarsDetailed = OutputVars;
 StateVarsDetailed = StateVars;
-InitStateDetailed = InitState;
+InputStateDetailed = InputState;
 FinalStateDetailed = FinalState;
 clear OutputVars StateVars InitState FinalState;
 
@@ -258,22 +217,9 @@ OutputOptions = { ...
 clear InputStruct;
 
 % Getting Midway state
-InputStruct = ConvertStatetoInitialCond(InitState);
-InputStruct.a = single(a);
-InputStruct.b = single(b);
-InputStruct.c = single(c);
-InputStruct.d = single(d);
+InputStruct = InputStateSparse;
 
-InputStruct.NStart = int32(NStartVect);
-InputStruct.NEnd   = int32(NEndVect);
-InputStruct.Weight = single(Weights);
-InputStruct.Delay  = single(Delays);
-
-InputStruct.alpha = single(0.3);
-InputStruct.I0 = single(1.3);
-InputStruct.onemsbyTstep          = int32(4);
 InputStruct.NoOfms                = int32(80000);
-InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval = int32(8000);
@@ -286,9 +232,9 @@ cd MatlabSource
 %% Loading Relevant Data
 
 load('../Data/SimResults1000DebugSpikeListfromInit.mat');
-clear OutputVarsDetailed StateVarsDetailed InitStateDetailed FinalStateDetailed;
+clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
 OutputVarsDetailed = OutputVars;
 StateVarsDetailed = StateVars;
-InitStateDetailed = InitState;
+InputStateDetailed = InputState;
 FinalStateDetailed = FinalState;
-clear OutputVars StateVars InitState FinalState;
+clear OutputVars StateVars InputState FinalState;

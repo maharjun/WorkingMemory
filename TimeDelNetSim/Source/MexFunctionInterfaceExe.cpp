@@ -18,7 +18,7 @@ int main(){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
 	mxArrayPtr  Input      = nullptr, 
-				InitState  = nullptr,
+				InputState = nullptr,
 				OutputVars = nullptr,
 				StateVars  = nullptr,
 				FinalState = nullptr;
@@ -74,10 +74,10 @@ int main(){
 	OutputVars = lhs[0];
 	StateVars = lhs[1];
 	FinalState = lhs[2];
-	InitState = lhs[3];
+	InputState = lhs[3];
 	
 	OutputFilePtr = matOpen(OutputFilePath, "wz");
-	matPutVariable(OutputFilePtr, "InitState", InitState);
+	matPutVariable(OutputFilePtr, "InputState", InputState);
 	matPutVariable(OutputFilePtr, "OutputVars", OutputVars);
 	matPutVariable(OutputFilePtr, "StateVars", StateVars);
 	matPutVariable(OutputFilePtr, "FinalState", FinalState);
@@ -85,7 +85,7 @@ int main(){
 	OutputFilePtr = nullptr;
 	
 	mxDestroyArray(Input);
-	mxDestroyArray(InitState);
+	mxDestroyArray(InputState);
 	mxDestroyArray(OutputVars);
 	mxDestroyArray(StateVars);
 	mxDestroyArray(FinalState);

@@ -138,8 +138,8 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	InputArgList.StdDev              = 3.5;
 
 	// set default values for Scalar State Variables
-	InputArgList.CurrentQIndex = 0;
-	InputArgList.Time = 0;
+	InputArgList.InitialState.CurrentQIndex = 0;
+	InputArgList.InitialState.Time = 0;
 
 	float*      genFloatPtr[4];     // Generic float Pointers used around the place to access data
 	int*        genIntPtr[2];       // Generic int Pointers used around the place to access data
@@ -148,34 +148,26 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	mxArray *   genmxArrayPtr;      // Generic mxArray Pointer used around the place to access data
 
 	// Initializing neuron specification structure array Neurons
-	getInputfromStruct(MatlabInputStruct, "a b c d", InputArgList.Neurons, 
-		FFL([](StructArgTable &StructFields, Neuron &DestElem){
-			DestElem.a = *(float*)StructFields.find(string("a"))->second.first;
-			DestElem.b = *(float*)StructFields.find(string("b"))->second.first;
-			DestElem.c = *(float*)StructFields.find(string("c"))->second.first;
-			DestElem.d = *(float*)StructFields.find(string("d"))->second.first;
-		}),
-		2, "required_size", N, "is_required");
+	getInputfromStruct(MatlabInputStruct, "a", InputArgList.a, 2, "required_size", N, "is_required");
+	getInputfromStruct(MatlabInputStruct, "b", InputArgList.b, 2, "required_size", N, "is_required");
+	getInputfromStruct(MatlabInputStruct, "c", InputArgList.c, 2, "required_size", N, "is_required");
+	getInputfromStruct(MatlabInputStruct, "d", InputArgList.d, 2, "required_size", N, "is_required");
 
 	// Initializing network (Synapse) specification structure array Network
-	getInputfromStruct(MatlabInputStruct, "NStart NEnd Weight Delay", InputArgList.Network,
-		FFL([&](StructArgTable &StructFields, Synapse &DestElem){
-			DestElem.NStart        = *(int*)StructFields.find(string("NStart"))->second.first;
-			DestElem.NEnd          = *(int*)StructFields.find(string("NEnd"))->second.first;
-			DestElem.Weight        = *(float*)StructFields.find(string("Weight"))->second.first;
-			DestElem.DelayinTsteps = *(float*)StructFields.find(string("Delay"))->second.first * InputArgList.onemsbyTstep + 0.5;
-		}),
-		2, "required_size", M, "is_required");
+	getInputfromStruct(MatlabInputStruct, "NStart", InputArgList.NStart , 2, "required_size", M, "is_required");
+	getInputfromStruct(MatlabInputStruct, "NEnd"  , InputArgList.NEnd   , 2, "required_size", M, "is_required");
+	getInputfromStruct(MatlabInputStruct, "Weight", InputArgList.Weight , 2, "required_size", M, "is_required");
+	getInputfromStruct(MatlabInputStruct, "Delay" , InputArgList.Delay  , 2, "required_size", M, "is_required");
 
 	// Setting Values for Optional Simulation Algorithm Parameters
-	getInputfromStruct(MatlabInputStruct, "I0", InputArgList.I0);
+	getInputfromStruct(MatlabInputStruct, "I0"                 , InputArgList.I0)                 ;
 	getInputfromStruct(MatlabInputStruct, "CurrentDecayFactor1", InputArgList.CurrentDecayFactor1);
 	getInputfromStruct(MatlabInputStruct, "CurrentDecayFactor2", InputArgList.CurrentDecayFactor2);
-	getInputfromStruct(MatlabInputStruct, "alpha", InputArgList.alpha);
-	getInputfromStruct(MatlabInputStruct, "StdDev", InputArgList.StdDev);
+	getInputfromStruct(MatlabInputStruct, "alpha"              , InputArgList.alpha)              ;
+	getInputfromStruct(MatlabInputStruct, "StdDev"             , InputArgList.StdDev)             ;
 
 	// Initializing Time
-	getInputfromStruct<int, size_t>(MatlabInputStruct, "Time", InputArgList.Time);
+	getInputfromStruct(MatlabInputStruct, "InitialState.Time", InputArgList.InitialState.Time);
 
 	// Initializing StorageStepSize
 	getInputfromStruct<int, size_t>(MatlabInputStruct, "StorageStepSize", InputArgList.StorageStepSize);
@@ -187,35 +179,41 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	getInputfromStruct(MatlabInputStruct, "InterestingSyns", InputArgList.InterestingSyns);
 
 	// Initializing V, U and Iin1, Iin2
-	getInputfromStruct(MatlabInputStruct, "V"   , InputArgList.V, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "U"   , InputArgList.U, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "Iin1", InputArgList.Iin1, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "Iin2", InputArgList.Iin2, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "InitialState.V"   , InputArgList.InitialState.V, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "InitialState.U"   , InputArgList.InitialState.U, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "InitialState.Iin1", InputArgList.InitialState.Iin1, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "InitialState.Iin2", InputArgList.InitialState.Iin2, 1, "required_size", N);
 
 	// Initializing WeightDeriv
-	getInputfromStruct(MatlabInputStruct, "WeightDeriv", InputArgList.WeightDeriv, 1, "required_size", M);
+	getInputfromStruct(MatlabInputStruct, "InitialState.WeightDeriv", InputArgList.InitialState.WeightDeriv, 1, "required_size", M);
 
 	// Initializing Irand and GenState (Random current related)
-	getInputfromStruct(MatlabInputStruct, "Irand", InputArgList.Irand, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "GenState", InputArgList.GenState, 1, "required_size", 4);
+	getInputfromStruct(MatlabInputStruct, "InitialState.Irand", InputArgList.InitialState.Irand, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "InitialState.GenState", InputArgList.InitialState.GenState, 1, "required_size", 4);
 
 	// Initializing CurrentQIndex
-	getInputfromStruct(MatlabInputStruct, "CurrentQIndex", InputArgList.CurrentQIndex);
+	getInputfromStruct(MatlabInputStruct, "InitialState.CurrentQIndex", InputArgList.InitialState.CurrentQIndex);
 
 	// Initializing SpikeQueue
-		int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
-	getInputfromStruct(MatlabInputStruct, "SpikeQueue", InputArgList.SpikeQueue, 1, "required_size", SpikeQueueSize);
+	int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
+	getInputfromStruct(MatlabInputStruct, "InitialState.SpikeQueue", InputArgList.InitialState.SpikeQueue, 1, "required_size", SpikeQueueSize);
 
 	// Initializing LastSpikedTimeNeuron
-	getInputfromStruct(MatlabInputStruct, "LSTNeuron", InputArgList.LSTNeuron, 1, "required_size", N);
+	getInputfromStruct(MatlabInputStruct, "InitialState.LSTNeuron", InputArgList.InitialState.LSTNeuron, 1, "required_size", N);
 
 	// Initializing LastSpikedTimeSyn
-	getInputfromStruct(MatlabInputStruct, "LSTSyn", InputArgList.LSTSyn, 1, "required_size", M);
+	getInputfromStruct(MatlabInputStruct, "InitialState.LSTSyn", InputArgList.InitialState.LSTSyn, 1, "required_size", M);
 
 	// Initializing OutputControl
+	// Get OutputControlString and OutputControl Word
 	genmxArrayPtr = mxGetField(MatlabInputStruct, 0, "OutputControl");
 	if (genmxArrayPtr != NULL && !mxIsEmpty(genmxArrayPtr)){
 		char * OutputControlSequence = mxArrayToString(genmxArrayPtr);
+
+		int OutputCtrlSeqLen = std::strlen(OutputControlSequence);
+		InputArgList.OutputControlString.resize(OutputCtrlSeqLen + 1);
+		InputArgList.OutputControlString.copyArray(0, OutputControlSequence, OutputCtrlSeqLen + 1);
+
 		InputArgList.OutputControl = getOutputControl(OutputControlSequence);
 		mxFree(OutputControlSequence);
 	}
@@ -361,6 +359,74 @@ mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 	return ReturnPointer;
 }
 
+mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
+	const char *FieldNames[] = {
+		"onemsbyTstep"         ,
+		"NoOfms"               ,
+		"DelayRange"           ,
+		"a"                    ,
+		"b"                    ,
+		"c"                    ,
+		"d"                    ,
+		"NStart"               ,
+		"NEnd"                 ,
+		"Weight"               ,
+		"Delay"                ,
+		"InterestingSyns"      ,
+		"I0"                   ,
+		"CurrentDecayFactor1"  ,
+		"CurrentDecayFactor2"  ,
+		"alpha"                ,
+		"StdDev"               ,
+		"StorageStepSize"      ,
+		"OutputControl"        ,
+		"StatusDisplayInterval",
+		"InitialState"         ,
+		nullptr
+	};
+	
+	int NFields = 0;
+	for (; FieldNames[NFields] != nullptr; ++NFields);
+	mwSize StructArraySize[2] = { 1, 1 };
+
+	mxArray * ReturnPointer = mxCreateStructArray_730(2, StructArraySize, NFields, FieldNames);
+
+	// Assigning Compulsory Simulation Parameters
+	mxSetField(ReturnPointer, 0, "onemsbyTstep"         , assignmxArray(InputStateStruct.onemsbyTstep         , mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "NoOfms"               , assignmxArray(InputStateStruct.NoOfms               , mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "DelayRange"           , assignmxArray(InputStateStruct.DelayRange           , mxINT32_CLASS));
+	
+	// Assigning Input Vectors (Network, Neurons etc.)
+	mxSetField(ReturnPointer, 0, "a"                    , assignmxArray(InputStateStruct.a                    , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "b"                    , assignmxArray(InputStateStruct.b                    , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "c"                    , assignmxArray(InputStateStruct.c                    , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "d"                    , assignmxArray(InputStateStruct.d                    , mxSINGLE_CLASS));
+
+	mxSetField(ReturnPointer, 0, "NStart"               , assignmxArray(InputStateStruct.NStart               , mxINT32_CLASS ));
+	mxSetField(ReturnPointer, 0, "NEnd"                 , assignmxArray(InputStateStruct.NEnd                 , mxINT32_CLASS ));
+	mxSetField(ReturnPointer, 0, "Weight"               , assignmxArray(InputStateStruct.Weight               , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "Delay"                , assignmxArray(InputStateStruct.Delay                , mxSINGLE_CLASS));
+	
+	mxSetField(ReturnPointer, 0, "InterestingSyns"      , assignmxArray(InputStateStruct.InterestingSyns      , mxINT32_CLASS ));
+
+	// Assigning Optional Simulation Algorithm Parameters
+	mxSetField(ReturnPointer, 0, "I0"                   , assignmxArray(InputStateStruct.I0                   , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "CurrentDecayFactor1"  , assignmxArray(InputStateStruct.CurrentDecayFactor1  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "CurrentDecayFactor2"  , assignmxArray(InputStateStruct.CurrentDecayFactor2  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "alpha"                , assignmxArray(InputStateStruct.alpha                , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "StdDev"               , assignmxArray(InputStateStruct.StdDev               , mxSINGLE_CLASS));
+	
+	// Assigning Optional Simulation Parameters
+	mxSetField(ReturnPointer, 0, "StorageStepSize"      , assignmxArray(InputStateStruct.StorageStepSize      , mxINT32_CLASS ));
+	mxSetField(ReturnPointer, 0, "StatusDisplayInterval", assignmxArray(InputStateStruct.StatusDisplayInterval, mxINT32_CLASS ));
+	mxSetField(ReturnPointer, 0, "OutputControl"        , mxCreateString(InputStateStruct.OutputControlString.begin()));
+	
+	// Assigning initial state
+	mxSetField(ReturnPointer, 0, "InitialState"         , putSingleStatetoMatlabStruct(InputStateStruct.InitialState));
+
+	return ReturnPointer;
+}
+
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
@@ -371,8 +437,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	// Declaring Output Vectors
 	OutputVarsStruct PureOutput;
 	StateVarsOutStruct StateVarsOutput;
-	FinalStateStruct FinalStateOutput;
-	InitialStateStruct InitialStateOutput;
+	SingleStateStruct FinalStateOutput;
+	InputArgs InputStateOutput;
 
 	// Running Simulation Function.
 	chrono::system_clock::time_point TStart = chrono::system_clock::now();
@@ -383,7 +449,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 			PureOutput,
 			StateVarsOutput,
 			FinalStateOutput,
-			InitialStateOutput);
+			InputStateOutput);
 	}
 	catch(ExOps::ExCodes A){
 		if (A == ExOps::EXCEPTION_MEM_FULL){
@@ -407,6 +473,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	plhs[2] = putSingleStatetoMatlabStruct(FinalStateOutput);
 
 	if (nlhs == 4){
-		plhs[3] = putSingleStatetoMatlabStruct(InitialStateOutput);
+		plhs[3] = putInputStatetoMatlabStruct(InputStateOutput);
 	}
 }
