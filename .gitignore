@@ -45,6 +45,7 @@ Temporary Items
 # Visual Studio Related Rules
 /*
 !/*.*
+/.vs
 /*.suo
 /*.*sdf
 
