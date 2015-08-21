@@ -1,5 +1,4 @@
-addpath('..\..\x64\Release_Exe\');
-
+addpath('..\..\x64\Release_Lib\');
 
 %%
 rng(25);
@@ -62,7 +61,7 @@ InputStruct.StatusDisplayInterval = int32(8000);
 InputStruct.OutputFile = 'SimResults1000DebugSparseLong.mat';
 save('../Data/InputData.mat', 'InputStruct');
 
-% [OutputVars, StateVars, FinalState, InitState] = TimeDelNetSim(InputStruct);
+% [OutputVars, StateVars, FinalState, InputState] = TimeDelNetSim(InputStruct);
 % Run the program after this
 cd ..
 ! "..\x64\Release_Exe\TimeDelNetSim.exe"
@@ -149,12 +148,12 @@ cd ..
 cd MatlabSource
 %% Loading Relevant Data
 load('../Data/SimResults1000DebugDetailedfromFinal.mat');
-clear OutputVarsDetailed StateVarsDetailed InitStateDetailed FinalStateDetailed;
+clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
 OutputVarsDetailed = OutputVars;
 StateVarsDetailed = StateVars;
 InputStateDetailed = InputState;
 FinalStateDetailed = FinalState;
-clear OutputVars StateVars InitState FinalState;
+clear OutputVars StateVars InputState FinalState;
 
 %% Performing Relevant Tests
 max(abs(StateVarsDetailed.V(:,4000) - StateVarsSparse.V(:,3)))
@@ -183,29 +182,14 @@ InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval = int32(8000);
 
-InputStruct.OutputFile = 'SimResults1000DebugDetailedfromInter.mat';
-save('../Data/InputData.mat', 'InputStruct');
-cd ..
-! "..\x64\Release_Exe\TimeDelNetSim.exe"
-cd MatlabSource
-%% Loading Relevant Data
-load('../Data/SimResults1000DebugDetailedfromInter.mat');
-clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
-OutputVarsDetailed = OutputVars;
-StateVarsDetailed = StateVars;
-InputStateDetailed = InputState;
-FinalStateDetailed = FinalState;
-clear OutputVars StateVars InitState FinalState;
+% InputStruct.OutputFile = 'SimResults1000DebugDetailedfromInter.mat';
+% save('../Data/InputData.mat', 'InputStruct');
 
+[OutputVarsDetailed, StateVarsDetailed, FinalStateDetailed, InputStateDetailed] = TimeDelNetSim(InputStruct);
 %% Performing Relevant Tests
 max(abs(StateVarsDetailed.V(:,8000) - StateVarsSparse.V(:,6)))
 
 %% Testing SpikeList generation
-
-%% Get Detailed vector from Initial State 
-% This is to check correctness of initial state return with default inputs
-
-load('../Data/SimResults1000DebugSparseLong.mat', 'InitState');
 
 % Setting up input settings
 OutputOptions = { ...
@@ -226,15 +210,5 @@ InputStruct.StatusDisplayInterval = int32(8000);
 
 InputStruct.OutputFile = 'SimResults1000DebugSpikeListfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');
-cd ..
-! "..\x64\Release_Exe\TimeDelNetSim.exe"
-cd MatlabSource
-%% Loading Relevant Data
 
-load('../Data/SimResults1000DebugSpikeListfromInit.mat');
-clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
-OutputVarsDetailed = OutputVars;
-StateVarsDetailed = StateVars;
-InputStateDetailed = InputState;
-FinalStateDetailed = FinalState;
-clear OutputVars StateVars InputState FinalState;
+[OutputVarsDetailed, StateVarsDetailed, FinalStateDetailed, InputStateDetailed] = TimeDelNetSim(InputStruct);

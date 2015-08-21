@@ -17,6 +17,11 @@ using namespace std;
 int main(){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
+
+	// Open Memory Usage Account
+	size_t MemAccountKey =  MemCounter::OpenMemAccount(size_t(3) << 29);
+
+	// Start Data Input from MAT File
 	mxArrayPtr  Input      = nullptr, 
 				InputState = nullptr,
 				OutputVars = nullptr,
@@ -41,6 +46,7 @@ int main(){
 	mxArrayPtr lhs[4] = { nullptr, nullptr, nullptr, nullptr }, 
 			   rhs[1] = { Input };
 
+	// Confirm Output File Rewrite
 	OutputFilePtr = matOpen(OutputFilePath, "r");
 	while (OutputFilePtr){
 		char UserConfirmResp;
@@ -59,6 +65,8 @@ int main(){
 			return 0;
 		}
 	}
+
+	// Execute Simulation via the Mex Interface
 	try{
 		mexFunction(4, lhs, 1, rhs);
 	}
@@ -76,6 +84,7 @@ int main(){
 	FinalState = lhs[2];
 	InputState = lhs[3];
 	
+	// Write Output into Output MAT File
 	OutputFilePtr = matOpen(OutputFilePath, "wz");
 	matPutVariable(OutputFilePtr, "InputState", InputState);
 	matPutVariable(OutputFilePtr, "OutputVars", OutputVars);
@@ -89,6 +98,10 @@ int main(){
 	mxDestroyArray(OutputVars);
 	mxDestroyArray(StateVars);
 	mxDestroyArray(FinalState);
+
+	// Close Memory Usage Account
+	MemCounter::CloseMemAccount(MemAccountKey);
+
 	system("pause");
 	return 0;
 }

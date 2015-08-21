@@ -431,6 +431,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
 
+	// Open Memory Usage Account
+	size_t MemAccountKey = MemCounter::OpenMemAccount(size_t(3) << 29);
+
 	InputArgs InputArgList;
 	takeInputFromMatlabStruct(prhs[0], InputArgList);
 
@@ -475,4 +478,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	if (nlhs == 4){
 		plhs[3] = putInputStatetoMatlabStruct(InputStateOutput);
 	}
+
+	// Close Memory Usage Account
+	MemCounter::CloseMemAccount(MemAccountKey);
 }
