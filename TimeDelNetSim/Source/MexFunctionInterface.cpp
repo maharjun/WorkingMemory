@@ -121,9 +121,9 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	size_t M = mxGetNumberOfElements(getValidStructField(MatlabInputStruct, "NStart", MexMemInputOps(true)));
 
 	// set Cumpulsory Simulation Parameters
-	getInputfromStruct(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, 1, "is_required");
-	getInputfromStruct(MatlabInputStruct, "NoOfms"      , InputArgList.NoOfms      , 1, "is_required");
-	getInputfromStruct(MatlabInputStruct, "DelayRange"  , InputArgList.DelayRange  , 1, "is_required");
+	getInputfromStruct<int>(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, 1, "is_required");
+	getInputfromStruct<int>(MatlabInputStruct, "NoOfms"      , InputArgList.NoOfms      , 1, "is_required");
+	getInputfromStruct<int>(MatlabInputStruct, "DelayRange"  , InputArgList.DelayRange  , 1, "is_required");
 
 	// set default values of Optional Simulation Parameters
 	InputArgList.StorageStepSize = DEFAULT_STORAGE_STEP;
@@ -148,61 +148,61 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	mxArray *   genmxArrayPtr;      // Generic mxArray Pointer used around the place to access data
 
 	// Initializing neuron specification structure array Neurons
-	getInputfromStruct(MatlabInputStruct, "a", InputArgList.a, 2, "required_size", N, "is_required");
-	getInputfromStruct(MatlabInputStruct, "b", InputArgList.b, 2, "required_size", N, "is_required");
-	getInputfromStruct(MatlabInputStruct, "c", InputArgList.c, 2, "required_size", N, "is_required");
-	getInputfromStruct(MatlabInputStruct, "d", InputArgList.d, 2, "required_size", N, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "a", InputArgList.a, 2, "required_size", N, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "b", InputArgList.b, 2, "required_size", N, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "c", InputArgList.c, 2, "required_size", N, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "d", InputArgList.d, 2, "required_size", N, "is_required");
 
 	// Initializing network (Synapse) specification structure array Network
-	getInputfromStruct(MatlabInputStruct, "NStart", InputArgList.NStart , 2, "required_size", M, "is_required");
-	getInputfromStruct(MatlabInputStruct, "NEnd"  , InputArgList.NEnd   , 2, "required_size", M, "is_required");
-	getInputfromStruct(MatlabInputStruct, "Weight", InputArgList.Weight , 2, "required_size", M, "is_required");
-	getInputfromStruct(MatlabInputStruct, "Delay" , InputArgList.Delay  , 2, "required_size", M, "is_required");
+	getInputfromStruct<int>  (MatlabInputStruct, "NStart", InputArgList.NStart , 2, "required_size", M, "is_required");
+	getInputfromStruct<int>  (MatlabInputStruct, "NEnd"  , InputArgList.NEnd   , 2, "required_size", M, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "Weight", InputArgList.Weight , 2, "required_size", M, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "Delay" , InputArgList.Delay  , 2, "required_size", M, "is_required");
 
 	// Setting Values for Optional Simulation Algorithm Parameters
-	getInputfromStruct(MatlabInputStruct, "I0"                 , InputArgList.I0)                 ;
-	getInputfromStruct(MatlabInputStruct, "CurrentDecayFactor1", InputArgList.CurrentDecayFactor1);
-	getInputfromStruct(MatlabInputStruct, "CurrentDecayFactor2", InputArgList.CurrentDecayFactor2);
-	getInputfromStruct(MatlabInputStruct, "alpha"              , InputArgList.alpha)              ;
-	getInputfromStruct(MatlabInputStruct, "StdDev"             , InputArgList.StdDev)             ;
+	getInputfromStruct<float>(MatlabInputStruct, "I0"                 , InputArgList.I0)                 ;
+	getInputfromStruct<float>(MatlabInputStruct, "CurrentDecayFactor1", InputArgList.CurrentDecayFactor1);
+	getInputfromStruct<float>(MatlabInputStruct, "CurrentDecayFactor2", InputArgList.CurrentDecayFactor2);
+	getInputfromStruct<float>(MatlabInputStruct, "alpha"              , InputArgList.alpha)              ;
+	getInputfromStruct<float>(MatlabInputStruct, "StdDev"             , InputArgList.StdDev)             ;
 
 	// Initializing Time
-	getInputfromStruct(MatlabInputStruct, "InitialState.Time", InputArgList.InitialState.Time);
+	getInputfromStruct<int>(MatlabInputStruct, "InitialState.Time", InputArgList.InitialState.Time);
 
 	// Initializing StorageStepSize
-	getInputfromStruct<int, size_t>(MatlabInputStruct, "StorageStepSize", InputArgList.StorageStepSize);
+	getInputfromStruct<int>(MatlabInputStruct, "StorageStepSize", InputArgList.StorageStepSize);
 
 	// Initializing StatusDisplayInterval
-	getInputfromStruct<int, size_t>(MatlabInputStruct, "StatusDisplayInterval", InputArgList.StatusDisplayInterval);
+	getInputfromStruct<int>(MatlabInputStruct, "StatusDisplayInterval", InputArgList.StatusDisplayInterval);
 
 	// Initializing InterestingSyns
-	getInputfromStruct(MatlabInputStruct, "InterestingSyns", InputArgList.InterestingSyns);
+	getInputfromStruct<int>(MatlabInputStruct, "InterestingSyns", InputArgList.InterestingSyns);
 
 	// Initializing V, U and Iin1, Iin2
-	getInputfromStruct(MatlabInputStruct, "InitialState.V"   , InputArgList.InitialState.V, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "InitialState.U"   , InputArgList.InitialState.U, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "InitialState.Iin1", InputArgList.InitialState.Iin1, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "InitialState.Iin2", InputArgList.InitialState.Iin2, 1, "required_size", N);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.V"   , InputArgList.InitialState.V, 1, "required_size", N);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.U"   , InputArgList.InitialState.U, 1, "required_size", N);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Iin1", InputArgList.InitialState.Iin1, 1, "required_size", N);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Iin2", InputArgList.InitialState.Iin2, 1, "required_size", N);
 
 	// Initializing WeightDeriv
-	getInputfromStruct(MatlabInputStruct, "InitialState.WeightDeriv", InputArgList.InitialState.WeightDeriv, 1, "required_size", M);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.WeightDeriv", InputArgList.InitialState.WeightDeriv, 1, "required_size", M);
 
 	// Initializing Irand and GenState (Random current related)
-	getInputfromStruct(MatlabInputStruct, "InitialState.Irand", InputArgList.InitialState.Irand, 1, "required_size", N);
-	getInputfromStruct(MatlabInputStruct, "InitialState.GenState", InputArgList.InitialState.GenState, 1, "required_size", 4);
-
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Irand", InputArgList.InitialState.Irand, 1, "required_size", N);
+	getInputfromStruct<uint32_T>(MatlabInputStruct, "InitialState.GenState", InputArgList.InitialState.GenState, 1, "required_size", 4);
+	
 	// Initializing CurrentQIndex
-	getInputfromStruct(MatlabInputStruct, "InitialState.CurrentQIndex", InputArgList.InitialState.CurrentQIndex);
+	getInputfromStruct<int>(MatlabInputStruct, "InitialState.CurrentQIndex", InputArgList.InitialState.CurrentQIndex);
 
 	// Initializing SpikeQueue
 	int SpikeQueueSize = InputArgList.onemsbyTstep * InputArgList.DelayRange;
-	getInputfromStruct(MatlabInputStruct, "InitialState.SpikeQueue", InputArgList.InitialState.SpikeQueue, 1, "required_size", SpikeQueueSize);
+	getInputfromStruct<int>(MatlabInputStruct, "InitialState.SpikeQueue", InputArgList.InitialState.SpikeQueue, 1, "required_size", SpikeQueueSize);
 
 	// Initializing LastSpikedTimeNeuron
-	getInputfromStruct(MatlabInputStruct, "InitialState.LSTNeuron", InputArgList.InitialState.LSTNeuron, 1, "required_size", N);
+	getInputfromStruct<int>(MatlabInputStruct, "InitialState.LSTNeuron", InputArgList.InitialState.LSTNeuron, 1, "required_size", N);
 
 	// Initializing LastSpikedTimeSyn
-	getInputfromStruct(MatlabInputStruct, "InitialState.LSTSyn", InputArgList.InitialState.LSTSyn, 1, "required_size", M);
+	getInputfromStruct<int>(MatlabInputStruct, "InitialState.LSTSyn", InputArgList.InitialState.LSTSyn, 1, "required_size", M);
 
 	// Initializing OutputControl
 	// Get OutputControlString and OutputControl Word
