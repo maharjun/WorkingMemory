@@ -7,12 +7,14 @@
 #include <chrono>
 #include <cmath>
 
-#include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\Headers\Network.hpp"
 #include "..\Headers\NeuronSim.hpp"
-#include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
+
+#include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
+
+#include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
 #include <emmintrin.h>
 #include <smmintrin.h>
 

@@ -12,8 +12,6 @@
 
 using namespace std;
 
-// This is to remove the definition of printf which makes it equal to mexPrintf
-#undef printf
 int main(){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION

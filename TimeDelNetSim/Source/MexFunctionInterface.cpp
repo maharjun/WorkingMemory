@@ -1,11 +1,15 @@
 #include <mex.h>
 #include <matrix.h>
+#undef printf
+
 #include <algorithm>
 #include <vector>
 #include <cstring>
 #include <chrono>
 #include <type_traits>
+
 #include "..\Headers\NeuronSim.hpp"
+
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"

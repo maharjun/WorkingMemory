@@ -5,8 +5,7 @@
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
 #include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
-#include <mex.h>
-#include <matrix.h>
+
 #include <xutility>
 #include <stdint.h>
 #include <vector>
