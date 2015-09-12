@@ -5,6 +5,7 @@
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
 #include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
+#include ".\IExtHeaders\IExtCode.hpp"
 
 #include <xutility>
 #include <stdint.h>
@@ -23,24 +24,22 @@ using namespace std;
 
 struct OutOps{
 	enum {
-		V_REQ               = (1 << 0), 
-		I_IN_1_REQ          = (1 << 1), 
-		I_IN_2_REQ          = (1 << 2), 
-		I_IN_REQ            = (1 << 3), 
-		I_RAND_REQ          = (1 << 4), 
-		WEIGHT_DERIV_REQ    = (1 << 5), 
-		GEN_STATE_REQ       = (1 << 6), 
-		TIME_REQ            = (1 << 7), 
-		U_REQ               = (1 << 8), 
-		WEIGHT_REQ          = (1 << 9), 
-		CURRENT_QINDS_REQ   = (1 << 10), 
-		SPIKE_QUEUE_REQ     = (1 << 11), 
-		LASTSPIKED_NEU_REQ  = (1 << 12), 
-		LASTSPIKED_SYN_REQ  = (1 << 13), 
-		I_TOT_REQ           = (1 << 14), 
-		SPIKE_LIST_REQ      = (1 << 15), 
-		INITIAL_STATE_REQ   = (1 << 16), 
-		FINAL_STATE_REQ     = (1 << 17)
+		V_REQ               = (1 <<  0), 
+		I_IN_1_REQ          = (1 <<  1), 
+		I_IN_2_REQ          = (1 <<  2), 
+		I_IN_REQ            = (1 <<  3), 
+		WEIGHT_DERIV_REQ    = (1 <<  4), 
+		TIME_REQ            = (1 <<  5), 
+		U_REQ               = (1 <<  6), 
+		WEIGHT_REQ          = (1 <<  7), 
+		CURRENT_QINDS_REQ   = (1 <<  8), 
+		SPIKE_QUEUE_REQ     = (1 <<  9), 
+		LASTSPIKED_NEU_REQ  = (1 << 10), 
+		LASTSPIKED_SYN_REQ  = (1 << 11), 
+		I_TOT_REQ           = (1 << 12), 
+		SPIKE_LIST_REQ      = (1 << 13), 
+		INITIAL_STATE_REQ   = (1 << 14), 
+		FINAL_STATE_REQ     = (1 << 15)
 	};
 };
 
@@ -91,8 +90,8 @@ struct SingleStateStruct{
 	MexVector<float> Iin2;
 	MexVector<float> WeightDeriv;
 	
-	MexVector<uint32_t> GenState;
-	MexVector<float> Irand;
+	// IextInterface state variable component
+	IExtInterface::SingleStateStruct IextInterface;
 
 	MexVector<MexVector<int > > SpikeQueue;
 	MexVector<int> LSTNeuron;
@@ -107,8 +106,7 @@ struct SingleStateStruct{
 		Iin1(),
 		Iin2(),
 		WeightDeriv(),
-		GenState(),
-		Irand(),
+		IextInterface(),
 		SpikeQueue(),
 		LSTNeuron(),
 		LSTSyn() {}
@@ -117,7 +115,6 @@ struct SingleStateStruct{
 };
 
 struct InputArgs{
-	static void IExtFunc(float, MexVector<float> &);
 	MexVector<int>   NStart;
 	MexVector<int>   NEnd;
 	MexVector<float> Weight;
@@ -129,6 +126,9 @@ struct InputArgs{
 	MexVector<float> d;
 
 	MexVector<int> InterestingSyns;
+
+	// IExt Interface Input Variables
+	IExtInterface::InputVarsStruct IextInterface;
 
 	// Initial State
 	SingleStateStruct InitialState;
@@ -147,8 +147,6 @@ struct InputArgs{
 	// Optional Simulation Algorithm Parameters
 	float I0;
 	float CurrentDecayFactor1, CurrentDecayFactor2;
-	float alpha;
-	float StdDev;
 
 	InputArgs() :
 		NStart(),
@@ -160,6 +158,7 @@ struct InputArgs{
 		c(),
 		d(),
 		InterestingSyns(),
+		IextInterface(),
 		OutputControlString(),
 		InitialState() {}
 };
@@ -188,8 +187,6 @@ struct InternalVars{
 	// Optional Simulation Algorithm Parameters
 	const float I0;
 	const float CurrentDecayFactor1, CurrentDecayFactor2;
-	const float alpha;
-	const float StdDev;
 
 	// Scalar State Variables
 	// Time is defined earlier for reasons of initialization sequence
@@ -206,10 +203,7 @@ struct InternalVars{
 	atomicLongVect Iin1;
 	atomicLongVect Iin2;
 	MexVector<float> WeightDeriv;
-	BandLimGaussVect Irand;
-	MexMatrix<float> RandMat;
-	MexMatrix<uint32_t> GenMat;
-	MexVector<float> Iext;
+	IExtInterface::InternalVarsStruct IextInterface;
 
 	MexVector<MexVector<int> > &SpikeQueue;
 	MexVector<int> &LSTNeuron;
@@ -254,10 +248,7 @@ struct InternalVars{
 		Iin1(N),	// Iin is defined separately as an atomic vect.
 		Iin2(N),
 		WeightDeriv           (IArgs.InitialState.WeightDeriv),
-		Irand(),	// Irand defined separately.
-		RandMat               (8192, N),
-		GenMat                (8192, 4),
-		Iext                  (N, 0.0f),
+		IextInterface         (),
 		SpikeQueue            (IArgs.InitialState.SpikeQueue),
 		LSTNeuron             (IArgs.InitialState.LSTNeuron),
 		LSTSyn                (IArgs.InitialState.LSTSyn),
@@ -277,9 +268,7 @@ struct InternalVars{
 		CacheBuffering     (128),
 		I0                 (IArgs.I0),
 		CurrentDecayFactor1(IArgs.CurrentDecayFactor1),
-		CurrentDecayFactor2(IArgs.CurrentDecayFactor2),
-		alpha              (IArgs.alpha), 
-		StdDev             (IArgs.StdDev){
+		CurrentDecayFactor2(IArgs.CurrentDecayFactor2){
 		// Setting up Network and Neurons
 		Network.resize(M);
 		MexTransform(IArgs.NStart.begin(), IArgs.NStart.end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NStart)->void{Syn.NStart        = NStart       ; }));
@@ -358,31 +347,20 @@ struct InternalVars{
 			return;
 		}
 
-		// Setting up IRand and corresponding Random Generators.
-		XorShiftPlus Gen1;
-		XorShiftPlus::StateStruct Gen1State;
-		Gen1State.ConvertVecttoState(IArgs.InitialState.GenState);
-		Gen1.setstate(Gen1State);
-
-		Irand.configure(Gen1, XorShiftPlus(), alpha);	// second generator is dummy.
-		if (IArgs.InitialState.Irand.istrulyempty())
-			Irand.resize(N);
-		else if (IArgs.InitialState.Irand.size() == N)
-			Irand.assign(IArgs.InitialState.Irand);				// initializing Vector
-		else{
-			// GIVE ERROR MESSAGE HERE
-			return;
-		}
+		// Initializing InternalVars for IextInternal giving it
+		//   1. The IExtInterface::InternalVarsStruct in InternalVars
+		//   2. The IExtInterface::InputVarsStruct in InputVars
+		//   3. The IExtInterface::SingleStateStruct (Initial State) in InputVars
+		//   4. InputVars itself to take parameters such as N, onemsbyTstep, 
+		//      Noofms etc.
 		
-		int LoopLimit = (8192 <= onemsbyTstep*NoOfms) ? 8192 : onemsbyTstep*NoOfms + 1;
-		RandMat[0] = Irand;
-		Irand.generator1().getstate().ConvertStatetoVect(GenMat[0]);
-
-		for (int j = 1; j < LoopLimit; ++j){
-			Irand.generate();
-			RandMat[j] = Irand;
-			Irand.generator1().getstate().ConvertStatetoVect(GenMat[j]);
-		}
+		IExtInterface::initInternalVariables(
+			IextInterface,
+			IArgs.IextInterface,
+			IArgs.InitialState.IextInterface,
+			IArgs
+		);
+		
 		// Setting Initial Conditions of SpikeQueue
 		if (SpikeQueue.istrulyempty()){
 			SpikeQueue = MexVector<MexVector<int> >(onemsbyTstep * DelayRange, MexVector<int>());
@@ -425,6 +403,7 @@ struct OutputVarsStruct{
 	MexMatrix<float> WeightOut;
 	MexMatrix<float> Iin;
 	MexMatrix<float> Itot;
+	IExtInterface::OutputVarsStruct IextInterface;
 	struct SpikeListStruct{
 		MexVector<int> SpikeSynInds;
 		MexVector<int> TimeRchdStartInds;
@@ -435,6 +414,7 @@ struct OutputVarsStruct{
 		WeightOut(),
 		Itot(),
 		Iin(),
+		IextInterface(),
 		SpikeList(){}
 
 	void initialize(const InternalVars &);
@@ -447,8 +427,7 @@ struct StateVarsOutStruct{
 	MexMatrix<float> Iin1Out;
 	MexMatrix<float> Iin2Out;
 	MexMatrix<float> WeightDerivOut;
-	MexMatrix<uint32_t> GenStateOut;
-	MexMatrix<float> IrandOut;
+	IExtInterface::StateOutStruct IextInterface;
 
 	MexVector<int> TimeOut;
 	MexVector<MexVector<MexVector<int> > > SpikeQueueOut;
@@ -463,8 +442,7 @@ struct StateVarsOutStruct{
 		Iin1Out(),
 		Iin2Out(),
 		WeightDerivOut(),
-		GenStateOut(),
-		IrandOut(),
+		IextInterface(),
 		TimeOut(),
 		SpikeQueueOut(),
 		CurrentQIndexOut(),

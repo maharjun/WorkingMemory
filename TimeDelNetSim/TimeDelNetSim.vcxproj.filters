@@ -19,6 +19,9 @@
     <Filter Include="Header Files\RandomNumGen">
       <UniqueIdentifier>{91250fe6-03c1-4a81-9ce4-185027ab1889}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\IExtHeaders">
+      <UniqueIdentifier>{fda1de85-671b-4ba3-bb31-725abe9a1276}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\MexFunctionInterface.cpp">
@@ -32,6 +35,9 @@
     </ClCompile>
     <ClCompile Include="..\MexMemoryInterfacing\Headers\MexMem.cpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClCompile>
+    <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp">
+      <Filter>Header Files\IExtHeaders</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -52,6 +58,9 @@
     </ClInclude>
     <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp">
+      <Filter>Header Files\IExtHeaders</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

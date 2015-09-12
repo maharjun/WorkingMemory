@@ -20,8 +20,8 @@ SingleState.V = StateStruct.V(:, timeIndex);
 SingleState.U = StateStruct.U(:, timeIndex);
 SingleState.Iin1 = StateStruct.Iin1(:, timeIndex);
 SingleState.Iin2 = StateStruct.Iin2(:, timeIndex);
-SingleState.Irand = StateStruct.Irand(:, timeIndex);
-SingleState.GenState = StateStruct.GenState(:, timeIndex);
+SingleState.Iext.Irand = StateStruct.Iext.Irand(:, timeIndex);
+SingleState.Iext.GenState = StateStruct.Iext.GenState(:, timeIndex);
 SingleState.Time = StateStruct.Time(timeIndex);
 
 SingleState.CurrentQIndex = StateStruct.CurrentQIndex(timeIndex);

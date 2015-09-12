@@ -10,6 +10,8 @@
 #include "..\Headers\Network.hpp"
 #include "..\Headers\NeuronSim.hpp"
 
+#include "..\Headers\IExtHeaders\IExtCode.hpp"
+
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
@@ -79,17 +81,14 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 
 	auto &Iin1 = IntVars.Iin1;
 	auto &Iin2 = IntVars.Iin2;
-	auto &Iext = IntVars.Iext;
-	auto &RandMat = IntVars.RandMat;
+	auto &Iext = IntVars.IextInterface.Iext;
 
 	auto &PreSynNeuronSectionBeg = IntVars.PreSynNeuronSectionBeg;
 	auto &PreSynNeuronSectionEnd = IntVars.PreSynNeuronSectionEnd;
 
 	auto &LastSpikedTimeNeuron = IntVars.LSTNeuron;
-	auto &StdDev = IntVars.StdDev;
 	auto &onemsbyTstep = IntVars.onemsbyTstep;
 	auto &time = IntVars.Time;
-	auto k = (IntVars.i - 1) % 8192;
 
 	size_t QueueSize = onemsbyTstep*IntVars.DelayRange;
 	size_t RangeBeg = Range.begin();
@@ -103,7 +102,7 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 		else{
 			//Implementing Izhikevich differential equation
 			float Vnew, Unew;
-			Vnew = Vnow[j] + (Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32) + Iext[j] + StdDev*RandMat(k,j)) / onemsbyTstep;
+			Vnew = Vnow[j] + (Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
 			Unew = Unow[j] + (Neurons[j].a*(Neurons[j].b*Vnow[j] - Unow[j])) / onemsbyTstep;
 			Vnow[j] = (Vnew > -100)? Vnew: -100;
 			Unow[j] = Unew;
@@ -133,23 +132,6 @@ void CurrentAttenuate::operator() (tbb::blocked_range<int> &Range) const {
 	for (tbb::atomic<long long> *i = Begin1, *j = Begin2; i < End1; ++i, ++j){
 		(*i) = (long long)(float(i->load()) * attenFactor1);
 		(*j) = (long long)(float(j->load()) * attenFactor2);
-	}
-}
-void InputArgs::IExtFunc(float time, MexVector<float> &Iext)
-{
-	//((int)(time / 0.1))
-	int N = Iext.size();
-	if (time - 0.1 <= 0.015){	//((int)(time / 0.1))*
-		for (int i = 0; i < 100*N/2000; ++i)
-			Iext[i] = 9;
-	}
-	else if (time - 0.8 <= 0.015){	//((int)(time / 0.1))*
-		for (int i = 0; i < 100*N/2000; ++i)
-			Iext[i] = 9;
-	}
-	else{
-		for (int i = 0; i < 100*N/2000; ++i)
-			Iext[i] = 9;
 	}
 }
 
@@ -193,11 +175,7 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ)
 		this->WeightDerivOut = MexMatrix<float>(TimeDimLen, M);
 
-	if (OutputControl & OutOps::I_RAND_REQ)
-		this->IrandOut = MexMatrix<float>(TimeDimLen, N);
-
-	if (OutputControl & OutOps::GEN_STATE_REQ)
-		this->GenStateOut = MexMatrix<uint32_t>(TimeDimLen, 4);
+	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 
 	this->TimeOut = MexVector<int>(TimeDimLen);
 
@@ -239,6 +217,10 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 		this->Iin = MexMatrix<float>(TimeDimLen, N);
 	if (OutputControl & OutOps::I_TOT_REQ)
 		this->Itot = MexMatrix<float>(TimeDimLen, N);
+
+	// Initializing Output Variables for IextInterface
+	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
+
 	if ((OutputControl & OutOps::SPIKE_LIST_REQ) && !StorageStepSize);
 		// The vector is initialized to size zero regardless. the If condition is 
 		// just kept for code conformity
@@ -255,8 +237,7 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->Iin1 = MexVector<float>(N);
 	this->Iin2 = MexVector<float>(N);
 	this->WeightDeriv = MexVector<float>(M);
-	this->Irand = MexVector<float>(N);
-	this->GenState = MexVector<uint32_t>(4);
+	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 	this->Weight = MexVector<float>(M);
 	this->LSTNeuron = MexVector<int>(N);
 	this->LSTSyn = MexVector<int>(M);
@@ -286,12 +267,15 @@ void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct
 		StateOut.WeightDerivOut[CurrentInsertPos] = WeightDeriv;
 	}
 
-	// Storing Random Current related state vars
-	if (OutputControl & OutOps::I_RAND_REQ)
-		StateOut.IrandOut[CurrentInsertPos] = RandMat[iint];
-	if (OutputControl & OutOps::GEN_STATE_REQ){
-		StateOut.GenStateOut[CurrentInsertPos] = GenMat[iint];
-	}
+	// Storing IextInterface related state / output vars
+	IExtInterface::doSparseOutput(
+		StateOut.IextInterface,
+		OutVars.IextInterface,
+		this->IextInterface,
+		*this
+	);
+
+	// Storing Current Time Instant
 	StateOut.TimeOut[CurrentInsertPos] = Time;
 
 	// Storing Weights
@@ -327,7 +311,7 @@ void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct
 	// Storing Itot
 	if (OutputControl & OutOps::I_TOT_REQ){
 		for (int j = 0; j < N; ++j)
-			OutVars.Itot(CurrentInsertPos, j) = Iext[j] + StdDev*RandMat(iint,j) + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
+			OutVars.Itot(CurrentInsertPos, j) = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
 	}
 
 }
@@ -354,12 +338,15 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 			StateOut.WeightDerivOut[CurrentInsertPos] = WeightDeriv;
 		}
 
-		// Storing Random Curent Related State vars
-		if (OutputControl & OutOps::I_RAND_REQ)
-			StateOut.IrandOut[CurrentInsertPos] = RandMat[iint];
-		if (OutputControl & OutOps::GEN_STATE_REQ){
-			StateOut.GenStateOut[CurrentInsertPos] = GenMat[iint];
-		}
+		// Storing IextInterface related state / output vars
+		IExtInterface::doFullOutput(
+			StateOut.IextInterface,
+			OutVars.IextInterface,
+			this->IextInterface,
+			*this
+			);
+
+		// Storing current time instant
 		StateOut.TimeOut[CurrentInsertPos] = Time;
 
 		// Storing Weights
@@ -395,7 +382,7 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 		// Storing Itot
 		if (OutputControl & OutOps::I_TOT_REQ){
 			for (int j = 0; j < N; ++j)
-				OutVars.Itot(CurrentInsertPos, j) = Iext[j] + StdDev*RandMat(iint, j) + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
+				OutVars.Itot(CurrentInsertPos, j) = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
 		}
 
 		// Storing Spike List
@@ -424,9 +411,12 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 		SingleStateOut.Iin1[j] = (float)Iin1[j] / (1i64 << 32);
 		SingleStateOut.Iin2[j] = (float)Iin2[j] / (1i64 << 32);
 	}
-	// storing Random curret related state vars
-	SingleStateOut.Irand = RandMat[i % 8192];
-	SingleStateOut.GenState = GenMat[i % 8192];
+	// Storing IextInterface related state vars
+	IExtInterface::doSingleStateOutput(
+		SingleStateOut.IextInterface,
+		this->IextInterface,
+		*this
+		);
 
 	SingleStateOut.V = V;
 	SingleStateOut.U = U;
@@ -482,12 +472,20 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.I0                  = I0                  ;
 	InputStateOut.CurrentDecayFactor1 = CurrentDecayFactor1 ;
 	InputStateOut.CurrentDecayFactor2 = CurrentDecayFactor2 ;
-	InputStateOut.alpha               = alpha               ;
-	InputStateOut.StdDev              = StdDev              ;
+
+	// Assigining IExt Input Vars
+	IExtInterface::doInputVarsOutput(
+		InputStateOut.IextInterface,
+		this->IextInterface,
+		*this);
 
 	// Initializing and Assigning the State Variables
 	InputStateOut.InitialState.initialize(*this);
 	DoSingleStateOutput(InputStateOut.InitialState);
+	IExtInterface::doSingleStateOutput(
+		InputStateOut.InitialState.IextInterface, 
+		this->IextInterface, 
+		*this);
 }
 
 void CachedSpikeStorage(InternalVars &IntVars){
@@ -605,10 +603,6 @@ void SimulateParallel(
 	MexVector<int>				&InterestingSyns      = IntVars.InterestingSyns;
 	atomicLongVect				&Iin1                 = IntVars.Iin1;
 	atomicLongVect				&Iin2                 = IntVars.Iin2;
-	BandLimGaussVect			&Irand                = IntVars.Irand;
-	MexMatrix<float>			&RandMat              = IntVars.RandMat;
-	MexMatrix<uint32_t>			&GenMat               = IntVars.GenMat;
-	MexVector<float>			&Iext                 = IntVars.Iext;
 	MexVector<MexVector<int> >	&SpikeQueue           = IntVars.SpikeQueue;
 	MexVector<int>				&LastSpikedTimeNeuron = IntVars.LSTNeuron;
 	MexVector<int>				&LastSpikedTimeSyn    = IntVars.LSTSyn;
@@ -628,8 +622,6 @@ void SimulateParallel(
 	// calculate value of alpha for filtering
 	// alpha = 0 => no filtering
 	// alpha = 1 => complete filtering
-	const float &alpha		= IntVars.alpha;
-	const float &StdDev		= IntVars.StdDev;
 	const float &CurrentDecayFactor1	= IntVars.CurrentDecayFactor1;	//Current Decay Factor in the current model (possibly input in future)
 	const float &CurrentDecayFactor2	= IntVars.CurrentDecayFactor2;
 	const size_t &StatusDisplayInterval = IntVars.StatusDisplayInterval;
@@ -764,8 +756,9 @@ void SimulateParallel(
 		
 		time = time + 1;
 
+		// Updating Iext for current time instant
 		IExtGenTimeBeg = std::chrono::system_clock::now();
-		InputArgs::IExtFunc(time*0.001f / onemsbyTstep, Iext);
+		IExtInterface::updateIExt(IntVars.IextInterface, IntVars);
 		IExtGenTimeEnd = std::chrono::system_clock::now();
 		IExtGenTime += std::chrono::duration_cast<std::chrono::microseconds>(IExtGenTimeEnd - IExtGenTimeBeg).count();
 
@@ -804,19 +797,6 @@ void SimulateParallel(
 		NeuronCalcTimeEnd = std::chrono::system_clock::now();
 		NeuronCalcTime += std::chrono::duration_cast<std::chrono::microseconds>(NeuronCalcTimeEnd - NeuronCalcTimeBeg).count();
 
-		// Generating RandMat
-		size_t LoopLimit = (8192 + i <= nSteps) ? 8192 : nSteps - i + 1;
-		IRandGenTimeBeg = std::chrono::system_clock::now();
-		if (i % 8192 == 0){
-			for (int j = 0; j < LoopLimit; ++j){
-				Irand.generate();
-				RandMat[j] = Irand;
-				Irand.generator1().getstate().ConvertStatetoVect(GenMat[j]);
-			}
-		}
-		IRandGenTimeEnd = std::chrono::system_clock::now();
-		IRandGenTime += std::chrono::duration_cast<std::chrono::microseconds>(IRandGenTimeEnd - IRandGenTimeBeg).count();
-
 		// This is code for storing spikes
 		SpikeStoreTimeBeg = std::chrono::system_clock::now();
 		CachedSpikeStorage(IntVars);
@@ -849,4 +829,3 @@ void SimulateParallel(
 	WriteOutput("Nuron Calculation Time = %d millisecs\n", NeuronCalcTime / 1000);
 	WriteOutput("Output Time = %d millisecs\n", OutputTime / 1000);
 }
-

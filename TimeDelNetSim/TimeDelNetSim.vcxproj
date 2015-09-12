@@ -131,6 +131,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\MexMemoryInterfacing\Headers\MexMem.cpp" />
+    <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp" />
     <ClCompile Include="Source\MexFunctionInterface.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Exe|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Exe|x64'">true</ExcludedFromBuild>
@@ -146,6 +147,7 @@
     <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp" />
     <ClInclude Include="..\MexMemoryInterfacing\Headers\MexMem.hpp" />
     <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp" />
+    <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp" />
     <ClInclude Include="Headers\Network.hpp" />
     <ClInclude Include="Headers\NeuronSim.hpp" />
   </ItemGroup>
