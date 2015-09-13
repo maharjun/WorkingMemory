@@ -219,6 +219,7 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 		"WeightOut",
 		"Iin",
 		"Itot",
+		"Iext",
 		"SpikeList",
 		nullptr
 	};
@@ -235,6 +236,10 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 	mxSetField(ReturnPointer, 0, "Iin", assignmxArray(Output.Iin, mxSINGLE_CLASS));
 	// Assigning Itot
 	mxSetField(ReturnPointer, 0, "Itot", assignmxArray(Output.Itot, mxSINGLE_CLASS));
+	// Assigning Output variables for IExtInterface
+	mxArrayPtr IExtOutVarsStruct = IExtInterface::putOutputVarstoMATLABStruct(Output.IextInterface);
+	mxSetField(ReturnPointer, 0, "Iext", IExtOutVarsStruct);
+
 	// Assigning SpikeList
 	mxArray * SpikeListStructPtr;
 		const char *SpikeListFieldNames[] = {
