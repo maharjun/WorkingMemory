@@ -38,8 +38,9 @@ size_t IExtInterface::getOutputControl(char * OutputControlString)
 
 		if (iEqual(OutputControlOptionParts[0], "FSF")) {
 			OutputControlWord |=
-				IExtInterface::OutOps::GEN_STATE_REQ |
-				IExtInterface::OutOps::I_RAND_REQ;
+				IExtInterface::OutOps::I_EXT_GEN_STATE_REQ |
+				IExtInterface::OutOps::I_EXT_REQ |
+				IExtInterface::OutOps::I_EXT_NEURON_REQ;
 		}
 
 		if (iEqual(OutputControlOptionParts[0], "IExt") || iEqual(OutputControlOptionParts[0], "/IExt")
@@ -50,25 +51,20 @@ size_t IExtInterface::getOutputControl(char * OutputControlString)
 			}
 
 			// Check out different Output Option cases
-			if (iEqual(OutputControlOptionParts[1], "GenState")) { 
+			if (iEqual(OutputControlOptionParts[1], "IExtGenState")) { 
 				OutputControlWord = (AddorRemove) ?
-					OutputControlWord |  IExtInterface::OutOps::GEN_STATE_REQ : 
-					OutputControlWord & ~IExtInterface::OutOps::GEN_STATE_REQ;
+					OutputControlWord |  IExtInterface::OutOps::I_EXT_GEN_STATE_REQ: 
+					OutputControlWord & ~IExtInterface::OutOps::I_EXT_GEN_STATE_REQ;
 			}
-			if (iEqual(OutputControlOptionParts[1], "Irand")) {
+			if (iEqual(OutputControlOptionParts[1], "Iext")) {
 				OutputControlWord = (AddorRemove) ?
-					OutputControlWord |  IExtInterface::OutOps::I_RAND_REQ : 
-					OutputControlWord & ~IExtInterface::OutOps::I_RAND_REQ;
+					OutputControlWord |  IExtInterface::OutOps::I_EXT_REQ: 
+					OutputControlWord & ~IExtInterface::OutOps::I_EXT_REQ;
 			}
-			if (iEqual(OutputControlOptionParts[1], "IextWORand")) {
+			if (iEqual(OutputControlOptionParts[1], "IExtNeuron")) {
 				OutputControlWord = (AddorRemove) ?
-					OutputControlWord |  IExtInterface::OutOps::I_EXT_WO_RAND_REQ : 
-					OutputControlWord & ~IExtInterface::OutOps::I_EXT_WO_RAND_REQ;
-			}
-			if (iEqual(OutputControlOptionParts[1], "IextTotal")) {
-				OutputControlWord = (AddorRemove) ?
-					OutputControlWord |  IExtInterface::OutOps::I_EXT_TOTAL_REQ : 
-					OutputControlWord & ~IExtInterface::OutOps::I_EXT_TOTAL_REQ;
+					OutputControlWord |  IExtInterface::OutOps::I_EXT_NEURON_REQ: 
+					OutputControlWord & ~IExtInterface::OutOps::I_EXT_NEURON_REQ;
 			}
 		}
 	}
@@ -82,12 +78,12 @@ void IExtInterface::takeInputVarsFromMatlabStruct(
 	InputArgs & SimulationInputArgs)
 {
 	// Giving Default Values to Optional Simulation Algorithm Parameters
-	IExtInputVarsStruct.alpha = 0.5f;
-	IExtInputVarsStruct.StdDev = 3.5f;
+	IExtInputVarsStruct.IExtDecayFactor = 2.0f / 3;
+	IExtInputVarsStruct.IExtScaleFactor = 20.0f;
 
 	// Taking input for Optional Simulation Algorithm Parameters
-	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.alpha" , IExtInputVarsStruct.alpha );
-	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.StdDev", IExtInputVarsStruct.StdDev);
+	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IExtDecayFactor", IExtInputVarsStruct.IExtDecayFactor);
+	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IExtScaleFactor", IExtInputVarsStruct.IExtScaleFactor);
 
 	// Initializing OutputControl
 	// Get OutputControlString and OutputControl Word
@@ -107,17 +103,22 @@ void IExtInterface::takeInitialStateFromMatlabStruct(
 	int N = SimulationInputArgs.a.size();
 	
 	// Initializing Irand
-	getInputfromStruct<float>(IExtMatlabInitState, "InitialState.Iext.Irand", IExtInitialStateStruct.Irand, 1, "required_size", N);
+	getInputfromStruct<float>(IExtMatlabInitState, "InitialState.Iext.Iext", IExtInitialStateStruct.Iext, 1, "required_size", N);
 	
-	// Initializing GenState
+	// Initializing IExtGenState
 	{
 		bool isNotSingleSeed =
-			getInputfromStruct<uint32_t>(IExtMatlabInitState, "InitialState.Iext.GenState", IExtInitialStateStruct.GenState,
+			getInputfromStruct<uint32_t>(IExtMatlabInitState, "InitialState.Iext.IExtGenState", IExtInitialStateStruct.IExtGenState,
 				2, "required_size", 1, "no_except");
 		if (isNotSingleSeed)
-			getInputfromStruct<uint32_t>(IExtMatlabInitState, "InitialState.Iext.GenState", IExtInitialStateStruct.GenState,
+			getInputfromStruct<uint32_t>(IExtMatlabInitState, "InitialState.Iext.IExtGenState", IExtInitialStateStruct.IExtGenState,
 				1, "required_size", 4);
 	}
+
+	// Initializing IExtNeuron
+	IExtInitialStateStruct.IExtNeuron = 0;
+	getInputfromStruct<int>(IExtMatlabInitState, "InitialState.Iext.IExtNeuron", IExtInitialStateStruct.IExtNeuron);
+
 }
 
 void IExtInterface::initInternalVariables(
@@ -132,64 +133,37 @@ void IExtInterface::initInternalVariables(
 	auto & InitState = IExtInitialStateStruct;
 	auto & SimInputArgs = SimulationInputArgs;
 
-	// Initializing Constants
-	IntVars.alpha         = InputVars.alpha;
-	IntVars.StdDev        = InputVars.StdDev;
-	IntVars.OutputControl = InputVars.OutputControl;
+	// Initializing Input Vars
+	IntVars.IExtDecayFactor = InputVars.IExtDecayFactor;
+	IntVars.IExtScaleFactor = InputVars.IExtScaleFactor;
+	IntVars.OutputControl   = InputVars.OutputControl;
+
+	// ---------- INITIALIZING STATE VARIABLES ---------- //
+
+	// Initializing required constants
 	int N = SimInputArgs.a.size();
 	int nSteps = SimInputArgs.NoOfms * SimInputArgs.onemsbyTstep;
 
-	// Initializing Random Current Generator from GenState
-	XorShiftPlus RandCurrGen;
+	// Initializing IExtGen from IExtGenState
 	XorShiftPlus::StateStruct RandCurrGenState;
 
-	if (InitState.GenState.size() == 1) {
-		RandCurrGen = XorShiftPlus(InitState.GenState[0]);
+	if (InitState.IExtGenState.size() == 1) {
+		IntVars.IExtGen = XorShiftPlus(InitState.IExtGenState[0]);
 	}
-	else if (InitState.GenState.size() == 4) {
-		RandCurrGenState.ConvertVecttoState(InitState.GenState);
-		RandCurrGen.setstate(RandCurrGenState);
+	else if (InitState.IExtGenState.size() == 4) {
+		RandCurrGenState.ConvertVecttoState(InitState.IExtGenState);
+		IntVars.IExtGen.setstate(RandCurrGenState);
 	}
 
-	// Initializing Irand 
-	if (InitState.Irand.istrulyempty()) {
-		IntVars.Irand.resize(N);
-	}
-	else {
-		IntVars.Irand.assign(InitState.Irand);
-	}
-	IntVars.Irand.configure(RandCurrGen, XorShiftPlus(), IntVars.alpha);
-
-	// Initializing RandMat and GenMat from initial conditions
-	IntVars.RandMat.resize(8192, N);
-	IntVars.GenMat.resize(8192, 4);
+	// Initializing Iext
+	if (InitState.Iext.istrulyempty())
+		IntVars.Iext.resize(N, 0.0f);
+	else
+		IntVars.Iext = InitState.Iext;
 	
-	int LoopLimit = (nSteps >= 8192) ? 8192 : nSteps + 1;
-	/* The following Initialization follows as below:
+	// Initializing IExtNeuron
+	IntVars.IExtNeuron = InitState.IExtNeuron;
 
-	   In the zeroth Iteration (representative of the 
-	   last iteration of previous simulation), RandMat
-	   is initialized such that RandMat[0] = Irand at
-	   the end of last previous simulation iteration.
-	   This is because of the policy that whatever Irand
-	   is used at a particular iteration must be avai-
-	   lable in RandMat at the end of that iteration.
-	   This otherwise translates into the Generate and 
-	   then Use policy (as opposed to Use and then Gen-
-	   erate)
-	   
-	   */
-	IntVars.RandMat[0] = IntVars.Irand;
-	IntVars.Irand.generator1().getstate().ConvertStatetoVect(IntVars.GenMat[0]);
-	for (int j = 1; j < LoopLimit; ++j) {
-		IntVars.Irand.generate();
-		IntVars.RandMat[j] = IntVars.Irand;
-		IntVars.Irand.generator1().getstate().ConvertStatetoVect(IntVars.GenMat[j]);
-	}
-
-	// Initializing Iext, IextWORand
-	IntVars.IextWORand = MexVector<float>(N, 0.0f);
-	IntVars.Iext       = MexVector<float>(N, 0.0f);
 }
 
 ////////////////////////////////////////////////////////
@@ -199,8 +173,9 @@ void IExtInterface::SingleStateStruct::initialize(
 	const IExtInterface::InternalVarsStruct & IExtInternalVarsStruct,
 	const InternalVars                      & SimulationInternalVars)
 {
-	GenState = MexVector<uint32_t>(4);
-	Irand = MexVector<float>(SimulationInternalVars.N);
+	IExtGenState = MexVector<uint32_t>(4);
+	Iext         = MexVector<float>(SimulationInternalVars.N);
+	IExtNeuron   = 0;
 }
 
 void IExtInterface::StateOutStruct::initialize(
@@ -208,8 +183,8 @@ void IExtInterface::StateOutStruct::initialize(
 	const InternalVars                      & SimulationInternalVars)
 {
 	// Aliasing above funtion parameter structs
-	auto &IntVars = IExtInternalVarsStruct;
-	auto &SimIntVars = SimulationInternalVars;
+	auto & IntVars = IExtInternalVarsStruct;
+	auto & SimIntVars = SimulationInternalVars;
 
 	// Aliasing some Simulation Vatiables
 	auto & StorageStepSize = SimIntVars.StorageStepSize;
@@ -227,11 +202,15 @@ void IExtInterface::StateOutStruct::initialize(
 		TimeDimLen = nSteps;
 	}
 
-	if (IntVars.OutputControl & IExtInterface::OutOps::GEN_STATE_REQ) {
-		this->GenStateOut = MexMatrix<uint32_t>(TimeDimLen, 4);
+	// Initializing state variables output struct based on output options
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_GEN_STATE_REQ) {
+		this->IExtGenStateOut = MexMatrix<uint32_t>(TimeDimLen, 4);
 	}
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_RAND_REQ) {
-		this->IrandOut = MexMatrix<float>(TimeDimLen, N);
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_REQ) {
+		this->IextOut = MexMatrix<float>(TimeDimLen, N);
+	}
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_NEURON_REQ) {
+		this->IExtNeuronOut = MexVector<int>(TimeDimLen);
 	}
 }
 
@@ -259,12 +238,8 @@ void IExtInterface::OutputVarsStruct::initialize(
 		TimeDimLen = nSteps;
 	}
 
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_WO_RAND_REQ) {
-		this->IextWORand = MexMatrix<float>(TimeDimLen, N);
-	}
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_TOTAL_REQ) {
-		this->IextTotal = MexMatrix<float>(TimeDimLen, N);
-	}
+	// Initializing Output Variables according to output options
+	// Currently there are no Output variables
 }
 
 ////////////////////////////////////////////////////////
@@ -291,7 +266,6 @@ void IExtInterface::doSparseOutput(
 
 	// Initializing some relevant constants
 	size_t CurrentInsertPos = (i - beta) / (onemsbyTstep * StorageStepSize);
-	size_t IRandIter        = i % 8192;
 	size_t QueueSize        = onemsbyTstep * DelayRange;
 
 	// Aliasing some IExtInterface variables
@@ -299,21 +273,18 @@ void IExtInterface::doSparseOutput(
 
 	// ------------------ OUTPUTTING STATE VARIABLES ------------------ //
 
-	if (IntVars.OutputControl & IExtInterface::OutOps::GEN_STATE_REQ) {
-		StateOut.GenStateOut[CurrentInsertPos] = IntVars.GenMat[IRandIter];
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_GEN_STATE_REQ) {
+		IntVars.IExtGen.getstate().ConvertStatetoVect(StateOut.IExtGenStateOut[CurrentInsertPos]);
 	}
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_RAND_REQ) {
-		StateOut.IrandOut[CurrentInsertPos] = IntVars.RandMat[IRandIter];
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_REQ) {
+		StateOut.IextOut[CurrentInsertPos] = IntVars.Iext;
 	}
-
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_NEURON_REQ) {
+		StateOut.IExtNeuronOut[CurrentInsertPos] = IntVars.IExtNeuron;
+	}
 	// ------------------ OUTPUTTING OUTPUT VARIABLES ------------------ //
 
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_WO_RAND_REQ) {
-		OutVars.IextWORand[CurrentInsertPos] = IntVars.IextWORand;
-	}
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_TOTAL_REQ) {
-		OutVars.IextTotal[CurrentInsertPos] = IntVars.Iext;
-	}
+	// No output variables
 }
 
 void IExtInterface::doFullOutput(
@@ -335,28 +306,24 @@ void IExtInterface::doFullOutput(
 
 	// Initializing some relevant constants
 	size_t CurrentInsertPos = i - 1;
-	size_t IRandIter        = i % 8192;
 
 	// Aliasing some IExtInterface variables
 	auto &OutputControl = IntVars.OutputControl;
 
 	// ------------------ OUTPUTTING STATE VARIABLES ------------------ //
 
-	if (IntVars.OutputControl & IExtInterface::OutOps::GEN_STATE_REQ) {
-		StateOut.GenStateOut[CurrentInsertPos] = IntVars.GenMat[IRandIter];
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_GEN_STATE_REQ) {
+		IntVars.IExtGen.getstate().ConvertStatetoVect(StateOut.IExtGenStateOut[CurrentInsertPos]);
 	}
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_RAND_REQ) {
-		StateOut.IrandOut[CurrentInsertPos] = IntVars.RandMat[IRandIter];
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_REQ) {
+		StateOut.IextOut[CurrentInsertPos] = IntVars.Iext;
 	}
-
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_NEURON_REQ) {
+		StateOut.IExtNeuronOut[CurrentInsertPos] = IntVars.IExtNeuron;
+	}
 	// ------------------ OUTPUTTING OUTPUT VARIABLES ------------------ //
 
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_WO_RAND_REQ) {
-		OutVars.IextWORand[CurrentInsertPos] = IntVars.IextWORand;
-	}
-	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_TOTAL_REQ) {
-		OutVars.IextTotal[CurrentInsertPos] = IntVars.Iext;
-	}
+	// No output variables
 }
 
 void IExtInterface::doSingleStateOutput(
@@ -372,13 +339,11 @@ void IExtInterface::doSingleStateOutput(
 	// Aliasing some simulation variables
 	auto &i = SimIntVars.i;
 
-	// Initializing some relevant constants
-	size_t IRandIter = i % 8192;
-
 	// ------------------ OUTPUTTING STATE VARIABLES ------------------ //
 
-	SingleState.GenState = IntVars.GenMat[IRandIter];
-	SingleState.Irand    = IntVars.RandMat[IRandIter];
+	IntVars.IExtGen.getstate().ConvertStatetoVect(SingleState.IExtGenState);
+	SingleState.Iext       = IntVars.Iext;
+	SingleState.IExtNeuron = IntVars.IExtNeuron;
 }
 
 void IExtInterface::doInputVarsOutput(
@@ -392,11 +357,12 @@ void IExtInterface::doInputVarsOutput(
 	auto & SimIntVars = SimulationInternalVars;
 
 	// Assigning the Input Variables
-	InputVars.alpha = IntVars.alpha;
-	InputVars.StdDev = IntVars.StdDev;
+	InputVars.IExtDecayFactor = IntVars.IExtDecayFactor;
+	InputVars.IExtScaleFactor = IntVars.IExtScaleFactor;
+	
 	// Note that OutputControl for IExtInterface is not so much an input variable
 	// as an intermediate variable calculated from an input to the original Simu-
-	// lation. Thus, this variablewill not be  returned or passed as input to the
+	// lation. Thus, this variable will not be returned or passed as input to the
 	// Simulation function
 }
 
@@ -406,8 +372,9 @@ void IExtInterface::doInputVarsOutput(
 mxArrayPtr IExtInterface::putSingleStatetoMATLABStruct(IExtInterface::SingleStateStruct & IExtSingleStateStruct)
 {
 	const char *FieldNames[] = {
-		"GenState",
-		"Irand",
+		"IExtGenState",
+		"Iext"        ,
+		"IExtNeuron"  ,
 		nullptr
 	};
 	
@@ -421,8 +388,9 @@ mxArrayPtr IExtInterface::putSingleStatetoMATLABStruct(IExtInterface::SingleStat
 	auto & SingleState = IExtSingleStateStruct;
 
 	// Performing output of Single State variables
-	mxSetField(ReturnPointer, 0, "GenState", assignmxArray(SingleState.GenState, mxUINT32_CLASS));
-	mxSetField(ReturnPointer, 0, "Irand"   , assignmxArray(SingleState.Irand   , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IExtGenState", assignmxArray(SingleState.IExtGenState, mxUINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "Iext"        , assignmxArray(SingleState.Iext        , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IExtNeuron"  , assignmxArray(SingleState.IExtNeuron  , mxINT32_CLASS));
 
 	return ReturnPointer;
 }
@@ -430,8 +398,8 @@ mxArrayPtr IExtInterface::putSingleStatetoMATLABStruct(IExtInterface::SingleStat
 mxArrayPtr IExtInterface::putInputVarstoMATLABStruct(IExtInterface::InputVarsStruct & IExtInputVarsStruct)
 {
 	const char *FieldNames[] = {
-		"alpha",
-		"StdDev",
+		"IExtDecayFactor",
+		"IExtScaleFactor",
 		nullptr
 	};
 	
@@ -445,8 +413,8 @@ mxArrayPtr IExtInterface::putInputVarstoMATLABStruct(IExtInterface::InputVarsStr
 	auto & InputVars = IExtInputVarsStruct;
 	
 	// Performing output of Input variables
-	mxSetField(ReturnPointer, 0, "alpha" , assignmxArray(InputVars.alpha , mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "StdDev", assignmxArray(InputVars.StdDev, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IExtDecayFactor", assignmxArray(InputVars.IExtDecayFactor, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IExtScaleFactor", assignmxArray(InputVars.IExtScaleFactor, mxSINGLE_CLASS));
 
 	return ReturnPointer;
 }
@@ -454,8 +422,9 @@ mxArrayPtr IExtInterface::putInputVarstoMATLABStruct(IExtInterface::InputVarsStr
 mxArrayPtr IExtInterface::putStateVarstoMATLABStruct(IExtInterface::StateOutStruct & IExtStateOutStruct)
 {
 	const char *FieldNames[] = {
-		"GenState",
-		"Irand",
+		"IExtGenState",
+		"Iext"        ,
+		"IExtNeuron"  ,
 		nullptr
 	};
 
@@ -469,8 +438,9 @@ mxArrayPtr IExtInterface::putStateVarstoMATLABStruct(IExtInterface::StateOutStru
 	auto & StateVars = IExtStateOutStruct;
 	
 	// Performing output of Input variables
-	mxSetField(ReturnPointer, 0, "GenState", assignmxArray(StateVars.GenStateOut, mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "Irand"   , assignmxArray(StateVars.IrandOut   , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IExtGenState", assignmxArray(StateVars.IExtGenStateOut, mxUINT32_CLASS));;
+	mxSetField(ReturnPointer, 0, "Iext"        , assignmxArray(StateVars.IextOut        , mxSINGLE_CLASS));;
+	mxSetField(ReturnPointer, 0, "IExtNeuron"  , assignmxArray(StateVars.IExtNeuronOut  , mxINT32_CLASS));
 
 	return ReturnPointer;
 }
@@ -478,8 +448,6 @@ mxArrayPtr IExtInterface::putStateVarstoMATLABStruct(IExtInterface::StateOutStru
 mxArrayPtr IExtInterface::putOutputVarstoMATLABStruct(IExtInterface::OutputVarsStruct & IExtOutputVarsStruct)
 {
 	const char *FieldNames[] = {
-		"IextTotal",
-		"IextWORand",
 		nullptr
 	};
 
@@ -493,8 +461,7 @@ mxArrayPtr IExtInterface::putOutputVarstoMATLABStruct(IExtInterface::OutputVarsS
 	auto & OutputVars = IExtOutputVarsStruct;
 
 	// Performing output of Input variables
-	mxSetField(ReturnPointer, 0, "IextTotal" , assignmxArray(OutputVars.IextTotal , mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "IextWORand", assignmxArray(OutputVars.IextWORand, mxSINGLE_CLASS));
+	// No output variables
 
 	return ReturnPointer;
 }
@@ -511,43 +478,14 @@ void IExtInterface::updateIExt(
 	auto &SimIntVars = SimulationInternalVars;
 
 	// Initializing Constants
-	auto &time         = SimIntVars.Time;
-	auto &i            = SimIntVars.i;
-	auto &onemsbyTstep = SimIntVars.onemsbyTstep;
-	auto nSteps        = SimIntVars.NoOfms * SimIntVars.onemsbyTstep;
 	auto &N            = SimIntVars.N;
 
-	// Generating Irand (in the form of RandMat)
-	if (i % 8192 == 0) {
-		size_t LoopLimit = (i + 8192 <= nSteps) ? 8192 : nSteps - i + 1;
-		// The logic for the above is that if i + 8192 > nSteps, then, 
-		// this generation will not happen again. In that case, RandMat
-		// generation should be done for current iterations plus iter-
-		// ations uptil nSteps, hence nSteps - i + 1
-
-		for (int j = 0; j < LoopLimit; ++j) {
-			IntVars.Irand.generate();
-			IntVars.RandMat[j] = IntVars.Irand;
-			IntVars.Irand.generator1().getstate().ConvertStatetoVect(IntVars.GenMat[j]);
-		}
+	// Resetting IExt
+	if (IntVars.IExtNeuron > 0) {
+		IntVars.Iext[IntVars.IExtNeuron - 1] = 0;
 	}
 
-	// Generating Iext without Irand using Irand above.
-	if (time <= 0.1 * 1000 * onemsbyTstep) {
-		for (int j = 0; j < 100 * N / 2000; ++j)
-			IntVars.IextWORand[j] = 9.0f;
-	}
-	else if (time - 0.8 <= 0.015) {	
-		for (int j = 0; j < 100 * N / 2000; ++j)
-			IntVars.IextWORand[j] = 9.0f;
-	}
-	else {
-		for (int j = 0; j < 100 * N / 2000; ++j)
-			IntVars.IextWORand[j] = 9.0f;
-	}
-
-	// Generating Total Iext
-	for (int j = 0; j < N; ++j) {
-		IntVars.Iext[j] = IntVars.IextWORand[j] + IntVars.StdDev*IntVars.RandMat[i % 8192][j];
-	}
+	// Random Neuron Selection once every time step (in this case ms)
+	IntVars.IExtNeuron = (IntVars.IExtGen() % N) + 1;
+	IntVars.Iext[IntVars.IExtNeuron - 1] += IntVars.IExtScaleFactor;
 }

@@ -22,20 +22,21 @@ namespace IExtInterface
 
 	struct OutOps {
 		enum {
-			I_RAND_REQ        = (1 << 0),
-			GEN_STATE_REQ     = (1 << 1),
-			I_EXT_WO_RAND_REQ = (1 << 3),
-			I_EXT_TOTAL_REQ   = (1 << 4)
+			I_EXT_REQ           = (1 << 0),
+			I_EXT_GEN_STATE_REQ = (1 << 1),
+			I_EXT_NEURON_REQ    = (1 << 2),
 		};
 	};
 
 	struct SingleStateStruct {
-		MexVector<float>    Irand;
-		MexVector<uint32_t> GenState;
+		MexVector<float>    Iext;
+		MexVector<uint32_t> IExtGenState;
+		int                 IExtNeuron;
 
 		SingleStateStruct() :
-			Irand(),
-			GenState() {}
+			Iext(),
+			IExtGenState(),
+			IExtNeuron() {}
 
 		void initialize(
 			const IExtInterface::InternalVarsStruct & IExtInternalVarsStruct,
@@ -47,8 +48,8 @@ namespace IExtInterface
 		// State Variables area part of SingleStateStruct
 
 		// Optional Simulation Algorithm Parameters
-		float alpha;
-		float StdDev;
+		float IExtScaleFactor;
+		float IExtDecayFactor;
 
 		size_t OutputControl;
 
@@ -56,12 +57,14 @@ namespace IExtInterface
 	};
 
 	struct StateOutStruct {
-		MexMatrix<float> IrandOut;
-		MexMatrix<uint32_t> GenStateOut;
+		MexMatrix<float>    IextOut;
+		MexMatrix<uint32_t> IExtGenStateOut;
+		MexVector<int>      IExtNeuronOut;
 
 		StateOutStruct() :
-			IrandOut(),
-			GenStateOut() {}
+			IextOut(),
+			IExtGenStateOut(),
+			IExtNeuronOut() {}
 
 		void initialize(
 			const IExtInterface::InternalVarsStruct & IExtInternalVarsStruct,
@@ -69,12 +72,8 @@ namespace IExtInterface
 	};
 
 	struct OutputVarsStruct {
-		MexMatrix<float> IextWORand;
-		MexMatrix<float> IextTotal;
-
-		OutputVarsStruct() :
-			IextWORand(),
-			IextTotal() {}
+		
+		OutputVarsStruct() {}
 
 		void initialize(
 			const IExtInterface::InternalVarsStruct & IExtInternalVarsStruct,
@@ -83,22 +82,19 @@ namespace IExtInterface
 
 	struct InternalVarsStruct {
 
-		float alpha;
-		float StdDev;
+		float IExtScaleFactor;
+		float IExtDecayFactor;
 
 		size_t OutputControl;
 
-		MexMatrix<float> RandMat;
-		MexMatrix<uint32_t> GenMat;
-		BandLimGaussVect Irand;
-		MexVector<float> IextWORand;
 		MexVector<float> Iext;
+		XorShiftPlus IExtGen;
+		size_t IExtNeuron;
 
 		InternalVarsStruct() :
-			RandMat(),
-			GenMat(),
-			Irand(),
-			Iext() {}
+			Iext(),
+			IExtGen(), 
+			IExtNeuron(0) {}
 	};
 
 	size_t getOutputControl(char *OutputControlString);

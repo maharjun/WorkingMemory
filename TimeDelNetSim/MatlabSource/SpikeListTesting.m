@@ -1,15 +1,15 @@
 %% Convert Spike to spatio(neuro)-temporal Data.
 
-BegTime = double((18)*1000*InputStruct.onemsbyTstep);
-EndTime = double((20)*1000*InputStruct.onemsbyTstep);
+BegTime = double((58)*1000*InputStruct.onemsbyTstep);
+EndTime = double((60)*1000*InputStruct.onemsbyTstep);
 
-RelTimes = StateVarsDetailed.Time >= BegTime & StateVarsDetailed.Time < EndTime;
+RelTimes = StateVarsSpikeList.Time >= BegTime & StateVarsSpikeList.Time < EndTime;
 BegTimeIndex = find(RelTimes, 1, 'first');
 EndTimeIndex = find(RelTimes, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange - 1;
 
 % Calculating Total number of spikes
-SpikeSynInds = OutputVarsDetailed.SpikeList.SpikeSynInds;
-TimeRchdStartInds = OutputVarsDetailed.SpikeList.TimeRchdStartInds;
+SpikeSynInds = OutputVarsSpikeList.SpikeList.SpikeSynInds;
+TimeRchdStartInds = OutputVarsSpikeList.SpikeList.TimeRchdStartInds;
 TotalLength = double(TimeRchdStartInds(EndTimeIndex + 1) - TimeRchdStartInds(BegTimeIndex));
 
 % Calculating the vector of time instants corresponding to arrival times
@@ -18,7 +18,7 @@ TotalLength = double(TimeRchdStartInds(EndTimeIndex + 1) - TimeRchdStartInds(Beg
 TimeVect = zeros(TotalLength, 1);
 
 InsertIndex = 1;
-Time = StateVarsDetailed.Time(BegTimeIndex);
+Time = StateVarsSpikeList.Time(BegTimeIndex);
 for i = BegTimeIndex:EndTimeIndex
 	NumofElemsCurrTime = double(TimeRchdStartInds(i+1) - TimeRchdStartInds(i));
 	TimeVect(InsertIndex:InsertIndex + NumofElemsCurrTime - 1) = Time;

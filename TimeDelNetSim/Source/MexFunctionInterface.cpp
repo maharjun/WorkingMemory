@@ -42,7 +42,7 @@ int getOutputControl(char* OutputControlSequence){
 			               | OutOps::FINAL_STATE_REQ;
 		if (AddorRemove && !_strcmpi(SequenceWord, "FSF"))
 			OutputControl |= OutOps::V_REQ | OutOps::U_REQ 
-						   | OutOps::I_IN_1_REQ | OutOps::I_IN_2_REQ
+						   | OutOps::I_IN_REQ
 						   | OutOps::WEIGHT_DERIV_REQ 
 			               | OutOps::WEIGHT_REQ
 						   | OutOps::CURRENT_QINDS_REQ
@@ -58,14 +58,10 @@ int getOutputControl(char* OutputControlSequence){
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::U_REQ : 
 					 OutputControl & ~(OutOps::U_REQ);
-		if (!_strcmpi(SequenceWord, "Iin1"))
+		if (!_strcmpi(SequenceWord, "Iin"))
 			OutputControl = AddorRemove ? 
-			         OutputControl | OutOps::I_IN_1_REQ : 
-					 OutputControl & ~(OutOps::I_IN_1_REQ);
-		if (!_strcmpi(SequenceWord, "Iin2"))
-			OutputControl = AddorRemove ? 
-			         OutputControl | OutOps::I_IN_2_REQ : 
-					 OutputControl & ~(OutOps::I_IN_2_REQ);
+			         OutputControl | OutOps::I_IN_REQ : 
+					 OutputControl & ~(OutOps::I_IN_REQ);
 		if (!_strcmpi(SequenceWord, "WeightDeriv"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::WEIGHT_DERIV_REQ : 
@@ -90,10 +86,6 @@ int getOutputControl(char* OutputControlSequence){
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::LASTSPIKED_SYN_REQ : 
 					 OutputControl & ~(OutOps::LASTSPIKED_SYN_REQ);
-		if (!_strcmpi(SequenceWord, "Iin"))
-			OutputControl = AddorRemove ? 
-			         OutputControl | OutOps::I_IN_REQ : 
-					 OutputControl & ~(OutOps::I_IN_REQ);
 		if (!_strcmpi(SequenceWord, "Itot"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_TOT_REQ : 
@@ -128,9 +120,12 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	InputArgList.StatusDisplayInterval = DEFAULT_STATUS_DISPLAY_STEP;
 	
 	// set default values of Optional Simulation Algorithm Parameters
-	InputArgList.I0                  = 1.0f;
-	InputArgList.CurrentDecayFactor1 = powf(9.0f / 10, 1.0f / InputArgList.onemsbyTstep);
-	InputArgList.CurrentDecayFactor2 = powf(9.0f / (10.0f), 1.0f / (4 * InputArgList.onemsbyTstep));
+	InputArgList.I0                 = 1.0f;
+	InputArgList.STDPDecayFactor    = powf(0.95f, 1.0f / InputArgList.onemsbyTstep);
+	InputArgList.STDPMaxWinLen      = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
+	InputArgList.CurrentDecayFactor = powf(1.0f / 3.5f, 1.0f / InputArgList.onemsbyTstep);
+	InputArgList.W0                 = 0.1f;
+	InputArgList.MaxSynWeight       = 10.0;
 
 	// set default values for Scalar State Variables
 	InputArgList.InitialState.CurrentQIndex = 0;
@@ -151,13 +146,18 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	// Initializing network (Synapse) specification structure array Network
 	getInputfromStruct<int>  (MatlabInputStruct, "NStart", InputArgList.NStart , 2, "required_size", M, "is_required");
 	getInputfromStruct<int>  (MatlabInputStruct, "NEnd"  , InputArgList.NEnd   , 2, "required_size", M, "is_required");
-	getInputfromStruct<float>(MatlabInputStruct, "Weight", InputArgList.Weight , 2, "required_size", M, "is_required");
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Weight", InputArgList.InitialState.Weight , 2, "required_size", M, "is_required");
 	getInputfromStruct<float>(MatlabInputStruct, "Delay" , InputArgList.Delay  , 2, "required_size", M, "is_required");
 
 	// Setting Values for Optional Simulation Algorithm Parameters
-	getInputfromStruct<float>(MatlabInputStruct, "I0"                 , InputArgList.I0)                 ;
-	getInputfromStruct<float>(MatlabInputStruct, "CurrentDecayFactor1", InputArgList.CurrentDecayFactor1);
-	getInputfromStruct<float>(MatlabInputStruct, "CurrentDecayFactor2", InputArgList.CurrentDecayFactor2);
+	getInputfromStruct<float>(MatlabInputStruct, "I0"                , InputArgList.I0                );
+	getInputfromStruct<float>(MatlabInputStruct, "STDPDecayFactor"   , InputArgList.STDPDecayFactor   );
+	if (getInputfromStruct<int>(MatlabInputStruct, "STDPMaxWinLen", InputArgList.STDPMaxWinLen, 3, "is_required", "no_except", "quiet")){
+		InputArgList.STDPMaxWinLen = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
+	}
+	getInputfromStruct<float>(MatlabInputStruct, "CurrentDecayFactor", InputArgList.CurrentDecayFactor);
+	getInputfromStruct<float>(MatlabInputStruct, "W0"                , InputArgList.W0                );
+	getInputfromStruct<float>(MatlabInputStruct, "MaxSynWeight"      , InputArgList.MaxSynWeight      );
 
 	// Initializing Time
 	getInputfromStruct<int>(MatlabInputStruct, "InitialState.Time", InputArgList.InitialState.Time);
@@ -171,11 +171,10 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	// Initializing InterestingSyns
 	getInputfromStruct<int>(MatlabInputStruct, "InterestingSyns", InputArgList.InterestingSyns);
 
-	// Initializing V, U and Iin1, Iin2
-	getInputfromStruct<float>(MatlabInputStruct, "InitialState.V"   , InputArgList.InitialState.V, 1, "required_size", N);
-	getInputfromStruct<float>(MatlabInputStruct, "InitialState.U"   , InputArgList.InitialState.U, 1, "required_size", N);
-	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Iin1", InputArgList.InitialState.Iin1, 1, "required_size", N);
-	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Iin2", InputArgList.InitialState.Iin2, 1, "required_size", N);
+	// Initializing V, U and Iin
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.V"   , InputArgList.InitialState.V   , 1, "required_size", N);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.U"   , InputArgList.InitialState.U   , 1, "required_size", N);
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Iin" , InputArgList.InitialState.Iin , 1, "required_size", N);
 
 	// Initializing WeightDeriv
 	getInputfromStruct<float>(MatlabInputStruct, "InitialState.WeightDeriv", InputArgList.InitialState.WeightDeriv, 1, "required_size", M);
@@ -196,7 +195,7 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	// Initializing IExtInterface Input Variables
 	IExtInterface::takeInputVarsFromMatlabStruct(InputArgList.IextInterface, MatlabInputStruct, InputArgList);
 
-	// Initializing Iext State variables
+	// Initializing IExtInterface State variables
 	IExtInterface::takeInitialStateFromMatlabStruct(InputArgList.InitialState.IextInterface, MatlabInputStruct, InputArgList);
 
 	// Initializing OutputControl
@@ -217,7 +216,6 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 	const char *FieldNames[] = { 
 		"WeightOut",
-		"Iin",
 		"Itot",
 		"Iext",
 		"SpikeList",
@@ -232,8 +230,6 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 	
 	// Assigning Weightout
 	mxSetField(ReturnPointer, 0, "WeightOut", assignmxArray(Output.WeightOut, mxSINGLE_CLASS));
-	// Assigning Iin
-	mxSetField(ReturnPointer, 0, "Iin", assignmxArray(Output.Iin, mxSINGLE_CLASS));
 	// Assigning Itot
 	mxSetField(ReturnPointer, 0, "Itot", assignmxArray(Output.Itot, mxSINGLE_CLASS));
 	// Assigning Output variables for IExtInterface
@@ -259,8 +255,7 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 	const char *FieldNames[] = {
 		"V",
-		"Iin1",
-		"Iin2",
+		"Iin",
 		"WeightDeriv",
 		"Iext",
 		"Time",
@@ -281,14 +276,13 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 	// Assigning V, U, Iin, WeightDeriv
 	mxSetField(ReturnPointer, 0, "V"             , assignmxArray(Output.VOut, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "U"             , assignmxArray(Output.UOut, mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "Iin1"          , assignmxArray(Output.Iin1Out, mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "Iin2"          , assignmxArray(Output.Iin2Out, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "Iin"           , assignmxArray(Output.IinOut, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "WeightDeriv"   , assignmxArray(Output.WeightDerivOut, mxSINGLE_CLASS));
 	
 	// Assigning Iext State variables
 	mxArrayPtr mxIExtStateVars = IExtInterface::putStateVarstoMATLABStruct(Output.IextInterface);
 	mxSetField(ReturnPointer, 0, "Iext"          , mxIExtStateVars);
-
+	
 	// Assigning current time
 	mxSetField(ReturnPointer, 0, "Time"          , assignmxArray(Output.TimeOut, mxINT32_CLASS));
 
@@ -311,8 +305,7 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 	const char *FieldNames[] = {
 		"V",
-		"Iin1",
-		"Iin2",
+		"Iin",
 		"WeightDeriv",
 		"Iext",
 		"Time",
@@ -333,8 +326,7 @@ mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 	// Assigning V, U, Iins, WeightDeriv
 	mxSetField(ReturnPointer, 0, "V"                 , assignmxArray(SingleStateList.V, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "U"                 , assignmxArray(SingleStateList.U, mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "Iin1"              , assignmxArray(SingleStateList.Iin1, mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "Iin2"              , assignmxArray(SingleStateList.Iin2, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "Iin"               , assignmxArray(SingleStateList.Iin, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "WeightDeriv"       , assignmxArray(SingleStateList.WeightDeriv, mxSINGLE_CLASS));
 	
 	// Assigning IExt State variables
@@ -375,13 +367,16 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 		"d"                    ,
 		"NStart"               ,
 		"NEnd"                 ,
-		"Weight"               ,
+		// "Weight"            , Not added here as it is state variable
+		"Iext"                 ,
 		"Delay"                ,
 		"InterestingSyns"      ,
 		"I0"                   ,
-		"CurrentDecayFactor1"  ,
-		"CurrentDecayFactor2"  ,
-		"Iext"                 ,
+		"STDPDecayFactor"      ,
+		"STDPMaxWinLen"        ,
+		"CurrentDecayFactor"   ,
+		"W0"                   ,
+		"MaxSynWeight"         ,
 		"StorageStepSize"      ,
 		"OutputControl"        ,
 		"StatusDisplayInterval",
@@ -408,20 +403,22 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 
 	mxSetField(ReturnPointer, 0, "NStart"               , assignmxArray(InputStateStruct.NStart               , mxINT32_CLASS ));
 	mxSetField(ReturnPointer, 0, "NEnd"                 , assignmxArray(InputStateStruct.NEnd                 , mxINT32_CLASS ));
-	mxSetField(ReturnPointer, 0, "Weight"               , assignmxArray(InputStateStruct.Weight               , mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "Delay"                , assignmxArray(InputStateStruct.Delay                , mxSINGLE_CLASS));
 	
 	mxSetField(ReturnPointer, 0, "InterestingSyns"      , assignmxArray(InputStateStruct.InterestingSyns      , mxINT32_CLASS ));
-
-	// Assigning Optional Simulation Algorithm Parameters
-	mxSetField(ReturnPointer, 0, "I0"                   , assignmxArray(InputStateStruct.I0                   , mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "CurrentDecayFactor1"  , assignmxArray(InputStateStruct.CurrentDecayFactor1  , mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "CurrentDecayFactor2"  , assignmxArray(InputStateStruct.CurrentDecayFactor2  , mxSINGLE_CLASS));
 	
+	// Assigning Optional Simulation Algorithm Parameters
+	mxSetField(ReturnPointer, 0, "I0"                  , assignmxArray(InputStateStruct.I0                  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "STDPDecayFactor"     , assignmxArray(InputStateStruct.STDPDecayFactor     , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "STDPMaxWinLen"       , assignmxArray(InputStateStruct.STDPMaxWinLen       , mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "CurrentDecayFactor"  , assignmxArray(InputStateStruct.CurrentDecayFactor  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "W0"                  , assignmxArray(InputStateStruct.W0                  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "MaxSynWeight"        , assignmxArray(InputStateStruct.MaxSynWeight        , mxSINGLE_CLASS));
+
 	// Assigning IExtinterface Input Variables
 	mxArrayPtr mxIExtInputVars = IExtInterface::putInputVarstoMATLABStruct(InputStateStruct.IextInterface);
-	mxSetField(ReturnPointer, 0, "Iext"                 , mxIExtInputVars);
-	
+	mxSetField(ReturnPointer, 0, "Iext", mxIExtInputVars);
+
 	// Assigning Optional Simulation Parameters
 	mxSetField(ReturnPointer, 0, "StorageStepSize"      , assignmxArray(InputStateStruct.StorageStepSize      , mxINT32_CLASS ));
 	mxSetField(ReturnPointer, 0, "StatusDisplayInterval", assignmxArray(InputStateStruct.StatusDisplayInterval, mxINT32_CLASS ));

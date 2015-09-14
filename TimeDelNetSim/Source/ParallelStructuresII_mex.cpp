@@ -7,16 +7,12 @@
 #include <chrono>
 #include <cmath>
 
+#include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\Headers\Network.hpp"
 #include "..\Headers\NeuronSim.hpp"
-
-#include "..\Headers\IExtHeaders\IExtCode.hpp"
-
-#include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
+#include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
-
-#include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
 #include <emmintrin.h>
 #include <smmintrin.h>
 
@@ -50,10 +46,14 @@ void CountingSort(int N, MexVector<Synapse> &Network, MexVector<size_t> &indirec
 void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) const{
 	const float &I0 = IntVars.I0;
 	auto &Network           = IntVars.Network;
-	auto &Iin1              = IntVars.Iin1;
-	auto &Iin2              = IntVars.Iin2;
+	auto &Iin                  = IntVars.Iin;
 	auto &LastSpikedTimeSyn = IntVars.LSTSyn;
+	auto &LastSpikedTimeNeuron = IntVars.LSTNeuron;
+	auto &WeightDeriv          = IntVars.WeightDeriv;
 	auto &time              = IntVars.Time;
+	auto &ExpVect              = IntVars.ExpVect;
+
+	auto &STDPMaxWinLen        = IntVars.STDPMaxWinLen;
 
 	int *begin = BlockedRange.begin();
 	int *end = BlockedRange.end();
@@ -65,9 +65,14 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight;
 		AddedCurrent.m128_u32[0] += (32 << 23);
 
-		Iin1[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
-		Iin2[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
+		Iin[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
+
 		LastSpikedTimeSyn[CurrentSynapseInd] = time;
+		int NeuronSpikeTime = LastSpikedTimeNeuron[CurrentSynapse.NEnd - 1];
+		if (NeuronSpikeTime >= 0){
+			size_t SpikeTimeDiffCurr = time - NeuronSpikeTime - 1;
+			WeightDeriv[CurrentSynapseInd] -= ((SpikeTimeDiffCurr < STDPMaxWinLen) ? 1.2f*ExpVect[SpikeTimeDiffCurr] : 0);
+		}
 	}
 }
 
@@ -79,16 +84,25 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 	auto &Neurons = IntVars.Neurons;
 	auto &Network = IntVars.Network;
 
-	auto &Iin1 = IntVars.Iin1;
-	auto &Iin2 = IntVars.Iin2;
+	auto &Iin = IntVars.Iin;
 	auto &Iext = IntVars.IextInterface.Iext;
+	auto &WeightDeriv = IntVars.WeightDeriv;
 
 	auto &PreSynNeuronSectionBeg = IntVars.PreSynNeuronSectionBeg;
 	auto &PreSynNeuronSectionEnd = IntVars.PreSynNeuronSectionEnd;
+	auto &PostSynNeuronSectionBeg = IntVars.PostSynNeuronSectionBeg;
+	auto &PostSynNeuronSectionEnd = IntVars.PostSynNeuronSectionEnd;
+
+	auto &ExpVect = IntVars.ExpVect;
+
+	auto &AuxArray = IntVars.AuxArray;
 
 	auto &LastSpikedTimeNeuron = IntVars.LSTNeuron;
+	auto &LastSpikedTimeSynapse = IntVars.LSTSyn;
+
 	auto &onemsbyTstep = IntVars.onemsbyTstep;
 	auto &time = IntVars.Time;
+	auto &STDPMaxWinLen = IntVars.STDPMaxWinLen;
 
 	size_t QueueSize = onemsbyTstep*IntVars.DelayRange;
 	size_t RangeBeg = Range.begin();
@@ -101,37 +115,53 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 		}
 		else{
 			//Implementing Izhikevich differential equation
-			float Vnew, Unew;
-			Vnew = Vnow[j] + (Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
-			Unew = Unow[j] + (Neurons[j].a*(Neurons[j].b*Vnow[j] - Unow[j])) / onemsbyTstep;
+			float Vnew, Vtemp, Unew;
+			Vnew = Vnow[j] + 0.5f*(Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
+			Vnew = (Vnew > -100) ? Vnew : -100;
+			Vnew = Vnew + 0.5f*(Vnew * (0.04f*Vnew + 5.0f) + 140.0f - Unow[j] + (float)(Iin[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
+			Vnew = (Vnew > -100) ? Vnew : -100;
+
+			Unew = Unow[j] + (Neurons[j].a*(Neurons[j].b*Vnew - Unow[j])) / onemsbyTstep;
+			
 			Vnow[j] = (Vnew > -100)? Vnew: -100;
 			Unow[j] = Unew;
 
 			//Implementing Network Computation in case a Neuron has spiked in the current interval
 			if (Vnow[j] >= 30.0f){
-				Vnow[j] = 30.0f;
+				//Vnow[j] = 30.0f;
+				//Implementing Izhikevich resetting
+				Vnow[j] = Neurons[j].c;
+				Unow[j] += Neurons[j].d;
+
 				//NSpikesGenminProc += ((PreSynNeuronSectionBeg[j] >= 0) ? PreSynNeuronSectionEnd[j] - PreSynNeuronSectionBeg[j] : 0);
 				LastSpikedTimeNeuron[j] = time;
 				//Space to implement any causal Learning Rule
+				MexVector<size_t>::iterator kbegin = AuxArray.begin() + PostSynNeuronSectionBeg[j];
+				MexVector<size_t>::iterator kend   = AuxArray.begin() + PostSynNeuronSectionEnd[j];
+				if (kbegin != kend)
+				for (MexVector<size_t>::iterator k = kbegin; k < kend; ++k){
+					size_t CurrSynIndex = *k;
+					MexVector<Synapse>::iterator CurrSynPtr = Network.begin() + CurrSynIndex;
+					int SynapseSpikeTime = LastSpikedTimeSynapse[CurrSynIndex];
+					if (SynapseSpikeTime >= 0){
+						size_t SpikeTimeDiffCurr = time - SynapseSpikeTime;
+						WeightDeriv[CurrSynIndex] += ((SpikeTimeDiffCurr < STDPMaxWinLen) ? ExpVect[SpikeTimeDiffCurr] : 0);
+					}
+				}
 			}
 		}
 	}
 }
 void CurrentAttenuate::operator() (tbb::blocked_range<int> &Range) const {
 
-	auto &Iin1 = IntVars.Iin1;
-	auto &Iin2 = IntVars.Iin2;
-	auto &attenFactor1 = IntVars.CurrentDecayFactor1;
-	auto &attenFactor2 = IntVars.CurrentDecayFactor2;
+	auto &Iin = IntVars.Iin;
+	auto &attenFactor = IntVars.CurrentDecayFactor;
 
-	tbb::atomic<long long> *Begin1 = &Iin1[Range.begin()];
-	tbb::atomic<long long> *End1 = &Iin1[Range.end()-1] + 1;
-	tbb::atomic<long long> *Begin2 = &Iin2[Range.begin()];
-	tbb::atomic<long long> *End2 = &Iin2[Range.end() - 1] + 1;
+	tbb::atomic<long long> *Begin1 = &Iin[Range.begin()];
+	tbb::atomic<long long> *End1 = &Iin[Range.end()-1] + 1;\
 
-	for (tbb::atomic<long long> *i = Begin1, *j = Begin2; i < End1; ++i, ++j){
-		(*i) = (long long)(float(i->load()) * attenFactor1);
-		(*j) = (long long)(float(j->load()) * attenFactor2);
+	for (tbb::atomic<long long> *i = Begin1; i < End1; ++i){
+		(*i) = 0; //(long long)(float(i->load()) * attenFactor)
 	}
 }
 
@@ -166,15 +196,13 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 	if (OutputControl & OutOps::U_REQ)
 		this->UOut = MexMatrix<float>(TimeDimLen, N);
 
-	if (OutputControl & OutOps::I_IN_1_REQ)
-		this->Iin1Out = MexMatrix<float>(TimeDimLen, N);
-	
-	if (OutputControl & OutOps::I_IN_2_REQ)
-		this->Iin2Out = MexMatrix<float>(TimeDimLen, N);
+	if (OutputControl & OutOps::I_IN_REQ)
+		this->IinOut = MexMatrix<float>(TimeDimLen, N);
 
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ)
 		this->WeightDerivOut = MexMatrix<float>(TimeDimLen, M);
 
+	// Initializing Output State variables for IExt variables
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 
 	this->TimeOut = MexVector<int>(TimeDimLen);
@@ -209,12 +237,10 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	else{
 		TimeDimLen = nSteps;
 	}
-
+	
 	if (OutputControl & OutOps::WEIGHT_REQ)
 		if (IntVars.InterestingSyns.size())
 			this->WeightOut = MexMatrix<float>(TimeDimLen, IntVars.InterestingSyns.size());
-	if (OutputControl & OutOps::I_IN_REQ)
-		this->Iin = MexMatrix<float>(TimeDimLen, N);
 	if (OutputControl & OutOps::I_TOT_REQ)
 		this->Itot = MexMatrix<float>(TimeDimLen, N);
 
@@ -234,8 +260,7 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 
 	this->V = MexVector<float>(N);
 	this->U = MexVector<float>(N);
-	this->Iin1 = MexVector<float>(N);
-	this->Iin2 = MexVector<float>(N);
+	this->Iin = MexVector<float>(N);
 	this->WeightDeriv = MexVector<float>(M);
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 	this->Weight = MexVector<float>(M);
@@ -245,22 +270,19 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->CurrentQIndex = -1;
 	this->Time = -1;
 }
+
 void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
 
 	size_t CurrentInsertPos = (i - beta) / (onemsbyTstep * StorageStepSize);
-	size_t iint = i % 8192;
 	size_t QueueSize = onemsbyTstep * DelayRange;
-	// Storing U,V,Iin and Time
+	// Storing U,V,Iin
 	if (OutputControl & OutOps::V_REQ)
 		StateOut.VOut[CurrentInsertPos] = V;
 	if (OutputControl & OutOps::U_REQ)
 		StateOut.UOut[CurrentInsertPos] = U;
-	if (OutputControl & OutOps::I_IN_1_REQ)
+	if (OutputControl & OutOps::I_IN_REQ)
 		for (int j = 0; j < N; ++j)
-			StateOut.Iin1Out(CurrentInsertPos, j) = (float)Iin1[j] / (1i64 << 32);
-	if (OutputControl & OutOps::I_IN_2_REQ)
-		for (int j = 0; j < N; ++j)
-			StateOut.Iin2Out(CurrentInsertPos, j) = (float)Iin2[j] / (1i64 << 32);
+			StateOut.IinOut(CurrentInsertPos, j) = (float)Iin[j] / (1i64 << 32);
 
 	//Storing Weight Derivative
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ){
@@ -302,36 +324,26 @@ void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct
 	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 		StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
 
-	// Storing Iin
-	if (OutputControl & OutOps::I_IN_REQ){
-		for (int j = 0; j < N; ++j)
-			OutVars.Iin(CurrentInsertPos, j) = (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
-	}
-
 	// Storing Itot
 	if (OutputControl & OutOps::I_TOT_REQ){
 		for (int j = 0; j < N; ++j)
-			OutVars.Itot(CurrentInsertPos, j) = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
+			OutVars.Itot(CurrentInsertPos, j) = IextInterface.Iext[j] + (float)(Iin[j]) / (1i64 << 32);
 	}
-
 }
 void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
 	if (!StorageStepSize){
 		size_t nSteps = onemsbyTstep*NoOfms;
-		size_t CurrentInsertPos = i - 1;       // This is never negative as i = 0 is the initial state
-		size_t iint = i % 8192;
+		size_t CurrentInsertPos = i - 1;
 		size_t QueueSize = onemsbyTstep * DelayRange;
-		// Storing U,V,Iout and Time
+
+		// Storing U,V,IinOut and Time
 		if (OutputControl & OutOps::V_REQ)
 			StateOut.VOut[CurrentInsertPos] = V;
 		if (OutputControl & OutOps::U_REQ)
 			StateOut.UOut[CurrentInsertPos] = U;
-		if (OutputControl & OutOps::I_IN_1_REQ)
+		if (OutputControl & OutOps::I_IN_REQ)
 			for (int j = 0; j < N; ++j)
-				StateOut.Iin1Out(CurrentInsertPos, j) = (float)Iin1[j] / (1i64 << 32);
-		if (OutputControl & OutOps::I_IN_2_REQ)
-			for (int j = 0; j < N; ++j)
-				StateOut.Iin2Out(CurrentInsertPos, j) = (float)Iin2[j] / (1i64 << 32);
+				StateOut.IinOut(CurrentInsertPos, j) = (float)Iin[j] / (1i64 << 32);
 
 		//Storing Weight Derivative
 		if (OutputControl & OutOps::WEIGHT_DERIV_REQ){
@@ -373,16 +385,10 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 		if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 			StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
 
-		// Storing Iin
-		if (OutputControl & OutOps::I_IN_REQ){
-			for (int j = 0; j < N; ++j)
-				OutVars.Iin(CurrentInsertPos, j) = (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
-		}
-
 		// Storing Itot
 		if (OutputControl & OutOps::I_TOT_REQ){
 			for (int j = 0; j < N; ++j)
-				OutVars.Itot(CurrentInsertPos, j) = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
+				OutVars.Itot(CurrentInsertPos, j) = IextInterface.Iext[j] + (float)(Iin[j]) / (1i64 << 32);
 		}
 
 		// Storing Spike List
@@ -408,9 +414,9 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 	size_t QueueSize = onemsbyTstep * DelayRange;
 	for (int j = 0; j < N; ++j){
-		SingleStateOut.Iin1[j] = (float)Iin1[j] / (1i64 << 32);
-		SingleStateOut.Iin2[j] = (float)Iin2[j] / (1i64 << 32);
+		SingleStateOut.Iin[j] = (float)Iin[j] / (1i64 << 32);
 	}
+
 	// Storing IextInterface related state vars
 	IExtInterface::doSingleStateOutput(
 		SingleStateOut.IextInterface,
@@ -432,18 +438,19 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 	SingleStateOut.LSTSyn = LSTSyn;
 	SingleStateOut.Time = Time;
 }
+
 void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	
 	// Input Vectors
-	InputStateOut.NStart.resize(M);
-	InputStateOut.NEnd  .resize(M);
-	InputStateOut.Weight.resize(M);
-	InputStateOut.Delay .resize(M);
+	InputStateOut.NStart             .resize(M);
+	InputStateOut.NEnd               .resize(M);
+	InputStateOut.InitialState.Weight.resize(M);
+	InputStateOut.Delay              .resize(M);
 	
-	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart.begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NStart       ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd  .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NEnd         ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.Weight.begin(), FFL([ ](Synapse &Syn)->float{return Syn.Weight       ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay .begin(), FFL([&](Synapse &Syn)->float{return (float)Syn.DelayinTsteps / onemsbyTstep; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart             .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NStart       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd               .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NEnd         ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.InitialState.Weight.begin(), FFL([ ](Synapse &Syn)->float{return Syn.Weight       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay              .begin(), FFL([&](Synapse &Syn)->float{return (float)Syn.DelayinTsteps / onemsbyTstep; }));
 
 	InputStateOut.a.resize(N);
 	InputStateOut.b.resize(N);
@@ -469,9 +476,12 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.StatusDisplayInterval = StatusDisplayInterval ;
 
 	// Optional Simulation Algorithm Parameters
-	InputStateOut.I0                  = I0                  ;
-	InputStateOut.CurrentDecayFactor1 = CurrentDecayFactor1 ;
-	InputStateOut.CurrentDecayFactor2 = CurrentDecayFactor2 ;
+	InputStateOut.I0                 = I0                 ;
+	InputStateOut.STDPDecayFactor    = STDPDecayFactor    ;
+	InputStateOut.STDPMaxWinLen      = STDPMaxWinLen      ;
+	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
+	InputStateOut.W0                 = W0                 ;
+	InputStateOut.MaxSynWeight       = MaxSynWeight       ;
 
 	// Assigining IExt Input Vars
 	IExtInterface::doInputVarsOutput(
@@ -601,8 +611,10 @@ void SimulateParallel(
 	MexVector<float>			&Vnow                 = IntVars.V;
 	MexVector<float>			&Unow                 = IntVars.U;
 	MexVector<int>				&InterestingSyns      = IntVars.InterestingSyns;
-	atomicLongVect				&Iin1                 = IntVars.Iin1;
-	atomicLongVect				&Iin2                 = IntVars.Iin2;
+	atomicLongVect              &Iin                  = IntVars.Iin;
+	MexVector<float>            &WeightDeriv          = IntVars.WeightDeriv;
+	IExtInterface::
+		InternalVarsStruct      &IextInterface        = IntVars.IextInterface;
 	MexVector<MexVector<int> >	&SpikeQueue           = IntVars.SpikeQueue;
 	MexVector<int>				&LastSpikedTimeNeuron = IntVars.LSTNeuron;
 	MexVector<int>				&LastSpikedTimeSyn    = IntVars.LSTSyn;
@@ -617,13 +629,15 @@ void SimulateParallel(
 	size_t &StorageStepSize     = IntVars.StorageStepSize;
 	size_t &OutputControl       = IntVars.OutputControl;
 	size_t &i                   = IntVars.i;
+	size_t &NExc                = IntVars.NExc;
+	size_t &MExc                = IntVars.MExc;
 
 	const float &I0			= IntVars.I0;	// Value of the current factor to be multd with weights (constant)
 	// calculate value of alpha for filtering
 	// alpha = 0 => no filtering
 	// alpha = 1 => complete filtering
-	const float &CurrentDecayFactor1	= IntVars.CurrentDecayFactor1;	//Current Decay Factor in the current model (possibly input in future)
-	const float &CurrentDecayFactor2	= IntVars.CurrentDecayFactor2;
+	const float &CurrentDecayFactor	= IntVars.CurrentDecayFactor;	//Current Decay Factor in the current model (possibly input in future)
+
 	const size_t &StatusDisplayInterval = IntVars.StatusDisplayInterval;
 
 	// other data members. probably derived from inputs or something
@@ -633,7 +647,7 @@ void SimulateParallel(
 
 	size_t QueueSize = SpikeQueue.size();
 	size_t nSteps = NoOfms*onemsbyTstep;
-	size_t N = IntVars.Neurons.size(), M = IntVars.Network.size();			
+	size_t N = IntVars.Neurons.size(), M = IntVars.Network.size();
 
 	
 	// VARIOuS ARRAYS USED apart from those in the argument list and Output List.
@@ -652,7 +666,7 @@ void SimulateParallel(
 	
 	MexVector<size_t> &PostSynNeuronSectionEnd = IntVars.PostSynNeuronSectionEnd;
 	
-	
+	MexVector<float>  &ExpVect                 = IntVars.ExpVect;
 	//----------------------------------------------------------------------------------------------//
 	//--------------------------------- Initializing output Arrays ---------------------------------//
 	//----------------------------------------------------------------------------------------------//
@@ -701,6 +715,16 @@ void SimulateParallel(
 		}
 	}
 
+	float Val = IntVars.W0;
+	for (int j = 0 ; j < IntVars.STDPMaxWinLen; ++j){
+		ExpVect[j] = Val;
+		Val *= IntVars.STDPDecayFactor;
+	}
+
+	NExc = 0;
+	for (int j = 0; Neurons[j].a == Neurons[0].a; ++j, ++NExc);
+	MExc = PreSynNeuronSectionEnd.operator[](NExc - 1);
+
 	// Here I assume that the first neuron is always excitatory
 	// and all excitatory neurons are stored contiguously starting 
 	// from the first neuron, and that excitatory and inhibitory
@@ -739,14 +763,12 @@ void SimulateParallel(
 	// ------------------------------------------------------------------------------ //
 	// Profiling Times.
 	size_t IExtGenTime = 0,
-		   IRandGenTime = 0,
 		   IUpdateTime = 0,
 		   SpikeStoreTime = 0,
 		   NeuronCalcTime = 0,
 		   OutputTime = 0;
 	std::chrono::system_clock::time_point
 		IExtGenTimeBeg, IExtGenTimeEnd,
-		IRandGenTimeBeg, IRandGenTimeEnd,
 		IUpdateTimeBeg, IUpdateTimeEnd,
 		SpikeStoreTimeBeg, SpikeStoreTimeEnd,
 		NeuronCalcTimeBeg, NeuronCalcTimeEnd,
@@ -758,7 +780,7 @@ void SimulateParallel(
 
 		// Updating Iext for current time instant
 		IExtGenTimeBeg = std::chrono::system_clock::now();
-		IExtInterface::updateIExt(IntVars.IextInterface, IntVars);
+		IExtInterface::updateIExt(IextInterface, IntVars);
 		IExtGenTimeEnd = std::chrono::system_clock::now();
 		IExtGenTime += std::chrono::duration_cast<std::chrono::microseconds>(IExtGenTimeEnd - IExtGenTimeBeg).count();
 
@@ -805,6 +827,15 @@ void SimulateParallel(
 
 		CurrentQueueIndex = (CurrentQueueIndex + 1) % QueueSize;
 
+		if (!(time % (1000 * onemsbyTstep))){
+			for (int j = 0; j < MExc; ++j){
+				Network[j].Weight += WeightDeriv[j] + 0.01f;
+				Network[j].Weight = (Network[j].Weight > 0) ? Network[j].Weight : 0;
+				Network[j].Weight = (Network[j].Weight < IntVars.MaxSynWeight) ? Network[j].Weight : IntVars.MaxSynWeight;
+				WeightDeriv[j] *= 0.9f;
+			}
+		}
+
 		OutputTimeBeg = std::chrono::system_clock::now();
 		IntVars.DoOutput(StateVarsOutput, PureOutputs);
 		OutputTimeEnd = std::chrono::system_clock::now();
@@ -823,9 +854,9 @@ void SimulateParallel(
 	}
 
 	WriteOutput("CurrentExt Generation Time = %d millisecs\n", IExtGenTime / 1000);
-	WriteOutput("CurrentRand Generation Time = %d millisecs\n", IRandGenTime / 1000);
 	WriteOutput("Current Update Time = %d millisecs\n", IUpdateTime / 1000);
 	WriteOutput("Spike Storage Time = %d millisecs\n", SpikeStoreTime / 1000);
 	WriteOutput("Nuron Calculation Time = %d millisecs\n", NeuronCalcTime / 1000);
 	WriteOutput("Output Time = %d millisecs\n", OutputTime / 1000);
 }
+
