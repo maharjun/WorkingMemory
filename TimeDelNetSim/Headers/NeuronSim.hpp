@@ -25,20 +25,22 @@ using namespace std;
 
 struct OutOps{
 	enum {
-		CURRENT_QINDS_REQ   = (1 << 1 ), 
-		FINAL_STATE_REQ     = (1 << 2 ),
-		INITIAL_STATE_REQ   = (1 << 3 ), 
-		I_IN_REQ            = (1 << 4 ), 
-		I_TOT_REQ           = (1 << 5 ), 
-		LASTSPIKED_NEU_REQ  = (1 << 6 ), 
-		LASTSPIKED_SYN_REQ  = (1 << 7 ), 
-		SPIKE_LIST_REQ      = (1 << 8 ), 
-		SPIKE_QUEUE_REQ     = (1 << 9 ), 
-		TIME_REQ            = (1 << 10), 
-		U_REQ               = (1 << 11), 
-		V_REQ               = (1 << 12),
-		WEIGHT_DERIV_REQ    = (1 << 13), 
-		WEIGHT_REQ          = (1 << 14), 
+        CURRENT_QINDS_REQ          = (1 << 1 ),
+        FINAL_STATE_REQ            = (1 << 2 ),
+        INITIAL_STATE_REQ          = (1 << 3 ),
+        I_IN_REQ                   = (1 << 4 ),
+        I_TOT_REQ                  = (1 << 5 ),
+        LASTSPIKED_NEU_REQ         = (1 << 6 ),
+        LASTSPIKED_SYN_REQ         = (1 << 7 ),
+        SPIKE_LIST_REQ             = (1 << 8 ),
+        SPIKE_QUEUE_REQ            = (1 << 9 ),
+        TIME_REQ                   = (1 << 10),
+        U_REQ                      = (1 << 11),
+        V_REQ                      = (1 << 12),
+        WEIGHT_DERIV_REQ           = (1 << 13),
+        WEIGHT_REQ                 = (1 << 14),
+        NMDA_ACTIVATION_REQ        = (1 << 15),
+        NMDA_SYN_EFFECTIVENESS_REQ = (1 << 16),
 	};
 };
 
@@ -97,6 +99,10 @@ struct SingleStateStruct{
 	int Time;
 	int CurrentQIndex;
 
+	// NMDA Related State Variables
+	MexVector<float> NMDA_Activation;
+	MexVector<int>   NMDA_SynEffectiveness;
+
 	SingleStateStruct() :
 		Weight(),
 		V(),
@@ -106,7 +112,9 @@ struct SingleStateStruct{
 		IextInterface(),
 		SpikeQueue(),
 		LSTNeuron(),
-		LSTSyn() {}
+		LSTSyn(),
+		NMDA_Activation(),
+		NMDA_SynEffectiveness() {}
 
 	void initialize(const InternalVars &);
 };
@@ -149,6 +157,11 @@ struct InputArgs{
 	int   STDPMaxWinLen;
 	float MaxSynWeight;
 	float W0;
+
+	float NMDA_Ton;             // On  threshold for NMDA Spike
+	float NMDA_Toff;            // Off threshold for NMDA Spike
+	float NMDA_ActivationDecay; // NMDA Activation decay each ms
+	float NMDA_ActivationInc;   // NMDA Activation increment on spike arrival
 
 	InputArgs() :
 		NStart(),
@@ -194,6 +207,10 @@ struct InternalVars{
 	const int STDPMaxWinLen;
 	const float MaxSynWeight;
 	const float W0;
+	const float NMDA_Ton;
+	const float NMDA_Toff;
+	const float NMDA_ActivationDecay;
+	const float NMDA_ActivationInc;
 
 	// Scalar State Variables
 	// Time is defined earlier for reasons of initialization sequence
@@ -209,6 +226,8 @@ struct InternalVars{
 	MexVector<float> &U;
 	atomicLongVect Iin;
 	MexVector<float> &WeightDeriv;
+	MexVector<float> &NMDA_Activation;
+	MexVector<int> &NMDA_SynEffectiveness;
 
 	IExtInterface::InternalVarsStruct IextInterface;
 
@@ -268,6 +287,8 @@ struct InternalVars{
 		SpikeQueue            (IArgs.InitialState.SpikeQueue),
 		LSTNeuron             (IArgs.InitialState.LSTNeuron),
 		LSTSyn                (IArgs.InitialState.LSTSyn),
+		NMDA_Activation       (IArgs.InitialState.NMDA_Activation),
+		NMDA_SynEffectiveness (IArgs.InitialState.NMDA_SynEffectiveness),
 
 		AuxArray                (M),
 		PreSynNeuronSectionBeg  (N, -1),
@@ -280,16 +301,20 @@ struct InternalVars{
 		BufferInsertIndex (onemsbyTstep*DelayRange, 0),
 		AddressOffset     (onemsbyTstep*DelayRange, 0),
 
-		onemsbyTstep       (IArgs.onemsbyTstep),
-		NoOfms             (IArgs.NoOfms),
-		DelayRange         (IArgs.DelayRange),
-		CacheBuffering     (128),
-		I0                 (IArgs.I0),
-		STDPMaxWinLen      (IArgs.STDPMaxWinLen),
-		CurrentDecayFactor (IArgs.CurrentDecayFactor),
-		STDPDecayFactor    (IArgs.STDPDecayFactor),
-		W0                 (IArgs.W0),
-		MaxSynWeight       (IArgs.MaxSynWeight){
+		onemsbyTstep           (IArgs.onemsbyTstep),
+		NoOfms                 (IArgs.NoOfms),
+		DelayRange             (IArgs.DelayRange),
+		CacheBuffering         (128),
+		I0                     (IArgs.I0),
+		STDPMaxWinLen          (IArgs.STDPMaxWinLen),
+		CurrentDecayFactor     (IArgs.CurrentDecayFactor),
+		STDPDecayFactor        (IArgs.STDPDecayFactor),
+		W0                     (IArgs.W0),
+		MaxSynWeight           (IArgs.MaxSynWeight),
+		NMDA_Ton               (IArgs.NMDA_Ton),
+		NMDA_Toff              (IArgs.NMDA_Toff),
+		NMDA_ActivationDecay   (IArgs.NMDA_ActivationDecay),
+		NMDA_ActivationInc     (IArgs.NMDA_ActivationInc) {
 		
 		// Setting up Network and Neurons
 		Network.resize(M);
@@ -393,6 +418,14 @@ struct InternalVars{
 			//GIVE ERROR MESSAGE HERE
 			return;
 		}
+
+		// Setting Initial Conditions for NMDA related variables
+		if (NMDA_Activation.istrulyempty()) {
+			NMDA_Activation.resize(M, 0.0f);
+		}
+		if (NMDA_SynEffectiveness.istrulyempty()) {
+			NMDA_SynEffectiveness.resize(M, (int)1);
+		}
 	}
 	void DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
 		DoFullOutput(StateOut, OutVars);
@@ -444,6 +477,10 @@ struct StateVarsOutStruct{
 	MexMatrix<int> LSTNeuronOut;
 	MexMatrix<int> LSTSynOut;
 
+	// NMDA State Output Vars
+	MexMatrix<float> NMDA_ActivationOut;
+	MexMatrix<int> NMDA_SynEffectivenessOut;
+
 	StateVarsOutStruct() :
 		WeightOut(),
 		VOut(),
@@ -455,7 +492,9 @@ struct StateVarsOutStruct{
 		SpikeQueueOut(),
 		CurrentQIndexOut(),
 		LSTNeuronOut(),
-		LSTSynOut() {}
+		LSTSynOut(),
+		NMDA_ActivationOut(),
+		NMDA_SynEffectivenessOut() {}
 
 	void initialize(const InternalVars &);
 };

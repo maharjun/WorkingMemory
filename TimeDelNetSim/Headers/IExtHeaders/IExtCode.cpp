@@ -40,7 +40,8 @@ size_t IExtInterface::getOutputControl(char * OutputControlString)
 			OutputControlWord |=
 				IExtInterface::OutOps::I_EXT_GEN_STATE_REQ |
 				IExtInterface::OutOps::I_EXT_REQ |
-				IExtInterface::OutOps::I_EXT_NEURON_REQ;
+				IExtInterface::OutOps::I_EXT_NEURON_REQ |
+				IExtInterface::OutOps::I_RAND_NEURON_REQ;
 		}
 
 		if (iEqual(OutputControlOptionParts[0], "IExt") || iEqual(OutputControlOptionParts[0], "/IExt")
@@ -63,8 +64,13 @@ size_t IExtInterface::getOutputControl(char * OutputControlString)
 			}
 			if (iEqual(OutputControlOptionParts[1], "IExtNeuron")) {
 				OutputControlWord = (AddorRemove) ?
-					OutputControlWord |  IExtInterface::OutOps::I_EXT_NEURON_REQ: 
+					OutputControlWord |  IExtInterface::OutOps::I_EXT_NEURON_REQ:
 					OutputControlWord & ~IExtInterface::OutOps::I_EXT_NEURON_REQ;
+			}
+			if (iEqual(OutputControlOptionParts[1], "IRandNeuron")) {
+				OutputControlWord = (AddorRemove) ?
+					OutputControlWord |  IExtInterface::OutOps::I_RAND_NEURON_REQ: 
+					OutputControlWord & ~IExtInterface::OutOps::I_RAND_NEURON_REQ;
 			}
 		}
 	}
@@ -78,12 +84,14 @@ void IExtInterface::takeInputVarsFromMatlabStruct(
 	InputArgs & SimulationInputArgs)
 {
 	// Giving Default Values to Optional Simulation Algorithm Parameters
-	IExtInputVarsStruct.IExtDecayFactor = 2.0f / 3;
-	IExtInputVarsStruct.IExtScaleFactor = 20.0f;
+	IExtInputVarsStruct.IRandDecayFactor = 2.0f / 3;
+	IExtInputVarsStruct.IRandAmplitude = 20.0f;
+	IExtInputVarsStruct.IExtAmplitude  = 20.0f;
 
 	// Taking input for Optional Simulation Algorithm Parameters
-	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IExtDecayFactor", IExtInputVarsStruct.IExtDecayFactor);
-	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IExtScaleFactor", IExtInputVarsStruct.IExtScaleFactor);
+	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IRandDecayFactor", IExtInputVarsStruct.IRandDecayFactor);
+	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IRandAmplitude"  , IExtInputVarsStruct.IRandAmplitude  );
+	getInputfromStruct<float>(IExtMatlabInputStruct, "Iext.IExtAmplitude"   , IExtInputVarsStruct.IExtAmplitude   );
 
 	// Initializing OutputControl
 	// Get OutputControlString and OutputControl Word
@@ -119,6 +127,10 @@ void IExtInterface::takeInitialStateFromMatlabStruct(
 	IExtInitialStateStruct.IExtNeuron = 0;
 	getInputfromStruct<int>(IExtMatlabInitState, "InitialState.Iext.IExtNeuron", IExtInitialStateStruct.IExtNeuron);
 
+	// Initializing IRandNeuron
+	IExtInitialStateStruct.IRandNeuron = 0;
+	getInputfromStruct<int>(IExtMatlabInitState, "InitialState.Iext.IRandNeuron", IExtInitialStateStruct.IRandNeuron);
+
 }
 
 void IExtInterface::initInternalVariables(
@@ -134,9 +146,10 @@ void IExtInterface::initInternalVariables(
 	auto & SimInputArgs = SimulationInputArgs;
 
 	// Initializing Input Vars
-	IntVars.IExtDecayFactor = InputVars.IExtDecayFactor;
-	IntVars.IExtScaleFactor = InputVars.IExtScaleFactor;
-	IntVars.OutputControl   = InputVars.OutputControl;
+	IntVars.IRandDecayFactor = InputVars.IRandDecayFactor;
+	IntVars.IRandAmplitude   = InputVars.IRandAmplitude;
+	IntVars.IExtAmplitude    = InputVars.IExtAmplitude;
+	IntVars.OutputControl    = InputVars.OutputControl;
 
 	// ---------- INITIALIZING STATE VARIABLES ---------- //
 
@@ -164,6 +177,9 @@ void IExtInterface::initInternalVariables(
 	// Initializing IExtNeuron
 	IntVars.IExtNeuron = InitState.IExtNeuron;
 
+	// Initializing IRandNeuron
+	IntVars.IRandNeuron = InitState.IRandNeuron;
+
 }
 
 ////////////////////////////////////////////////////////
@@ -176,6 +192,7 @@ void IExtInterface::SingleStateStruct::initialize(
 	IExtGenState = MexVector<uint32_t>(4);
 	Iext         = MexVector<float>(SimulationInternalVars.N);
 	IExtNeuron   = 0;
+	IRandNeuron  = 0;
 }
 
 void IExtInterface::StateOutStruct::initialize(
@@ -211,6 +228,9 @@ void IExtInterface::StateOutStruct::initialize(
 	}
 	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_NEURON_REQ) {
 		this->IExtNeuronOut = MexVector<int>(TimeDimLen);
+	}
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_RAND_NEURON_REQ) {
+		this->IRandNeuronOut = MexVector<int>(TimeDimLen);
 	}
 }
 
@@ -282,6 +302,9 @@ void IExtInterface::doSparseOutput(
 	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_NEURON_REQ) {
 		StateOut.IExtNeuronOut[CurrentInsertPos] = IntVars.IExtNeuron;
 	}
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_RAND_NEURON_REQ) {
+		StateOut.IRandNeuronOut[CurrentInsertPos] = IntVars.IRandNeuron;
+	}
 	// ------------------ OUTPUTTING OUTPUT VARIABLES ------------------ //
 
 	// No output variables
@@ -321,6 +344,9 @@ void IExtInterface::doFullOutput(
 	if (IntVars.OutputControl & IExtInterface::OutOps::I_EXT_NEURON_REQ) {
 		StateOut.IExtNeuronOut[CurrentInsertPos] = IntVars.IExtNeuron;
 	}
+	if (IntVars.OutputControl & IExtInterface::OutOps::I_RAND_NEURON_REQ) {
+		StateOut.IRandNeuronOut[CurrentInsertPos] = IntVars.IRandNeuron;
+	}
 	// ------------------ OUTPUTTING OUTPUT VARIABLES ------------------ //
 
 	// No output variables
@@ -342,8 +368,9 @@ void IExtInterface::doSingleStateOutput(
 	// ------------------ OUTPUTTING STATE VARIABLES ------------------ //
 
 	IntVars.IExtGen.getstate().ConvertStatetoVect(SingleState.IExtGenState);
-	SingleState.Iext       = IntVars.Iext;
-	SingleState.IExtNeuron = IntVars.IExtNeuron;
+	SingleState.Iext        = IntVars.Iext;
+	SingleState.IExtNeuron  = IntVars.IExtNeuron;
+	SingleState.IRandNeuron = IntVars.IRandNeuron;
 }
 
 void IExtInterface::doInputVarsOutput(
@@ -357,9 +384,10 @@ void IExtInterface::doInputVarsOutput(
 	auto & SimIntVars = SimulationInternalVars;
 
 	// Assigning the Input Variables
-	InputVars.IExtDecayFactor = IntVars.IExtDecayFactor;
-	InputVars.IExtScaleFactor = IntVars.IExtScaleFactor;
-	
+	InputVars.IRandDecayFactor = IntVars.IRandDecayFactor;
+	InputVars.IRandAmplitude   = IntVars.IRandAmplitude;
+	InputVars.IExtAmplitude    = IntVars.IExtAmplitude;
+
 	// Note that OutputControl for IExtInterface is not so much an input variable
 	// as an intermediate variable calculated from an input to the original Simu-
 	// lation. Thus, this variable will not be returned or passed as input to the
@@ -375,6 +403,7 @@ mxArrayPtr IExtInterface::putSingleStatetoMATLABStruct(IExtInterface::SingleStat
 		"IExtGenState",
 		"Iext"        ,
 		"IExtNeuron"  ,
+		"IRandNeuron" ,
 		nullptr
 	};
 	
@@ -391,6 +420,7 @@ mxArrayPtr IExtInterface::putSingleStatetoMATLABStruct(IExtInterface::SingleStat
 	mxSetField(ReturnPointer, 0, "IExtGenState", assignmxArray(SingleState.IExtGenState, mxUINT32_CLASS));
 	mxSetField(ReturnPointer, 0, "Iext"        , assignmxArray(SingleState.Iext        , mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "IExtNeuron"  , assignmxArray(SingleState.IExtNeuron  , mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "IRandNeuron" , assignmxArray(SingleState.IRandNeuron , mxINT32_CLASS));
 
 	return ReturnPointer;
 }
@@ -398,8 +428,9 @@ mxArrayPtr IExtInterface::putSingleStatetoMATLABStruct(IExtInterface::SingleStat
 mxArrayPtr IExtInterface::putInputVarstoMATLABStruct(IExtInterface::InputVarsStruct & IExtInputVarsStruct)
 {
 	const char *FieldNames[] = {
-		"IExtDecayFactor",
-		"IExtScaleFactor",
+		"IRandDecayFactor",
+		"IRandAmplitude"  ,
+		"IExtAmplitude"   ,
 		nullptr
 	};
 	
@@ -413,8 +444,9 @@ mxArrayPtr IExtInterface::putInputVarstoMATLABStruct(IExtInterface::InputVarsStr
 	auto & InputVars = IExtInputVarsStruct;
 	
 	// Performing output of Input variables
-	mxSetField(ReturnPointer, 0, "IExtDecayFactor", assignmxArray(InputVars.IExtDecayFactor, mxSINGLE_CLASS));
-	mxSetField(ReturnPointer, 0, "IExtScaleFactor", assignmxArray(InputVars.IExtScaleFactor, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IRandDecayFactor", assignmxArray(InputVars.IRandDecayFactor, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IRandAmplitude"  , assignmxArray(InputVars.IRandAmplitude  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "IExtAmplitude"   , assignmxArray(InputVars.IExtAmplitude   , mxSINGLE_CLASS));
 
 	return ReturnPointer;
 }
@@ -425,6 +457,7 @@ mxArrayPtr IExtInterface::putStateVarstoMATLABStruct(IExtInterface::StateOutStru
 		"IExtGenState",
 		"Iext"        ,
 		"IExtNeuron"  ,
+		"IRandNeuron" ,
 		nullptr
 	};
 
@@ -438,9 +471,10 @@ mxArrayPtr IExtInterface::putStateVarstoMATLABStruct(IExtInterface::StateOutStru
 	auto & StateVars = IExtStateOutStruct;
 	
 	// Performing output of Input variables
-	mxSetField(ReturnPointer, 0, "IExtGenState", assignmxArray(StateVars.IExtGenStateOut, mxUINT32_CLASS));;
-	mxSetField(ReturnPointer, 0, "Iext"        , assignmxArray(StateVars.IextOut        , mxSINGLE_CLASS));;
+	mxSetField(ReturnPointer, 0, "IExtGenState", assignmxArray(StateVars.IExtGenStateOut, mxUINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "Iext"        , assignmxArray(StateVars.IextOut        , mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "IExtNeuron"  , assignmxArray(StateVars.IExtNeuronOut  , mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "IRandNeuron" , assignmxArray(StateVars.IRandNeuronOut , mxINT32_CLASS));
 
 	return ReturnPointer;
 }
@@ -479,13 +513,35 @@ void IExtInterface::updateIExt(
 
 	// Initializing Constants
 	auto &N            = SimIntVars.N;
+	auto &Time         = SimIntVars.Time;
+	auto &onemsbyTstep = SimIntVars.onemsbyTstep;
 
 	// Resetting IExt
+	if (IntVars.IRandNeuron > 0)
+		IntVars.Iext[IntVars.IRandNeuron - 1] = 0;
+	
 	if (IntVars.IExtNeuron > 0) {
 		IntVars.Iext[IntVars.IExtNeuron - 1] = 0;
+		IntVars.IExtNeuron = 0;
 	}
+	
 
 	// Random Neuron Selection once every time step (in this case ms)
-	IntVars.IExtNeuron = (IntVars.IExtGen() % N) + 1;
-	IntVars.Iext[IntVars.IExtNeuron - 1] += IntVars.IExtScaleFactor;
+	// Added to deliberate external current
+	//if (Time  < 100*1000*onemsbyTstep)
+	if (Time % 10000 < 1000) {
+		if (Time % 100 < 60) {
+			IntVars.IExtNeuron = Time % 100 + 1;
+			IntVars.Iext[IntVars.IExtNeuron - 1] += IntVars.IExtAmplitude;
+		}
+	}
+	IntVars.IRandNeuron = (IntVars.IExtGen() % (int)(3.333f*N)) + 1;
+	
+	if (IntVars.IRandNeuron <= N) {
+		IntVars.Iext[IntVars.IRandNeuron - 1] += IntVars.IRandAmplitude;
+	}
+	else {
+		IntVars.IRandNeuron = 0;
+	}
+
 }

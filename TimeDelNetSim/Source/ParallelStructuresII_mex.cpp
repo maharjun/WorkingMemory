@@ -45,28 +45,50 @@ void CountingSort(int N, MexVector<Synapse> &Network, MexVector<size_t> &indirec
 
 void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) const{
 	const float &I0 = IntVars.I0;
-	auto &Network           = IntVars.Network;
-	auto &Iin                  = IntVars.Iin;
-	auto &LastSpikedTimeSyn = IntVars.LSTSyn;
-	auto &LastSpikedTimeNeuron = IntVars.LSTNeuron;
-	auto &WeightDeriv          = IntVars.WeightDeriv;
-	auto &time              = IntVars.Time;
-	auto &ExpVect              = IntVars.ExpVect;
+	auto &Network               = IntVars.Network;
+	auto &Iin                   = IntVars.Iin;
+	auto &LastSpikedTimeSyn     = IntVars.LSTSyn;
+	auto &LastSpikedTimeNeuron  = IntVars.LSTNeuron;
 
-	auto &STDPMaxWinLen        = IntVars.STDPMaxWinLen;
+	auto &NMDA_Activation       = IntVars.NMDA_Activation;
+	auto &NMDA_SynEffectiveness = IntVars.NMDA_SynEffectiveness;
+	auto &NMDA_ActivationDecay  = IntVars.NMDA_ActivationDecay;
+	auto &NMDA_ActivationInc    = IntVars.NMDA_ActivationInc;
+	auto &NMDA_Toff             = IntVars.NMDA_Toff;
+
+
+	auto &WeightDeriv           = IntVars.WeightDeriv;
+	auto &time                  = IntVars.Time;
+	auto &ExpVect               = IntVars.ExpVect;
+
+	auto &STDPMaxWinLen         = IntVars.STDPMaxWinLen;
 
 	int *begin = BlockedRange.begin();
 	int *end = BlockedRange.end();
 	for (int * iter = begin; iter < end; ++iter){
 		Synapse CurrentSynapse = Network[*iter];
 		int CurrentSynapseInd = *iter;
+		
+		// Performing NMDA related tasks
+		int PrevSpikeTime = LastSpikedTimeSyn[CurrentSynapseInd];
+		NMDA_Activation[CurrentSynapseInd] *= pow(NMDA_ActivationDecay, ((PrevSpikeTime >= 0)? time - PrevSpikeTime: time));
+
+		if (NMDA_Activation[CurrentSynapseInd] < NMDA_Toff) {
+			NMDA_SynEffectiveness[CurrentSynapseInd] = 1;
+		}
+
+		NMDA_Activation[CurrentSynapseInd] += NMDA_ActivationInc;
+		NMDA_Activation[CurrentSynapseInd] = (NMDA_Activation[CurrentSynapseInd] > 4.0f) ? 4.0f : NMDA_Activation[CurrentSynapseInd];
+
+		// Performing Current Update
 		__m128 AddedCurrent;
 		AddedCurrent.m128_u64[0] = 0; AddedCurrent.m128_u64[1] = 0;
-		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight;
+		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight*NMDA_SynEffectiveness[CurrentSynapseInd];
 		AddedCurrent.m128_u32[0] += (32 << 23);
 
 		Iin[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
 
+		// Performing Long Term STDP
 		LastSpikedTimeSyn[CurrentSynapseInd] = time;
 		int NeuronSpikeTime = LastSpikedTimeNeuron[CurrentSynapse.NEnd - 1];
 		if (NeuronSpikeTime >= 0){
@@ -99,6 +121,14 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 
 	auto &LastSpikedTimeNeuron = IntVars.LSTNeuron;
 	auto &LastSpikedTimeSynapse = IntVars.LSTSyn;
+
+	// NMDA related variabls
+	auto & NMDA_Activation       = IntVars.NMDA_Activation;
+	auto & NMDA_SynEffectiveness = IntVars.NMDA_SynEffectiveness;
+	auto & NMDA_ActivationDecay  = IntVars.NMDA_ActivationDecay;
+	auto & NMDA_ActivationInc    = IntVars.NMDA_ActivationInc;
+	auto & NMDA_Toff             = IntVars.NMDA_Toff;
+	auto & NMDA_Ton              = IntVars.NMDA_Ton ;
 
 	auto &onemsbyTstep = IntVars.onemsbyTstep;
 	auto &time = IntVars.Time;
@@ -138,14 +168,26 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 				//Space to implement any causal Learning Rule
 				MexVector<size_t>::iterator kbegin = AuxArray.begin() + PostSynNeuronSectionBeg[j];
 				MexVector<size_t>::iterator kend   = AuxArray.begin() + PostSynNeuronSectionEnd[j];
+				
+				// Implementing STDP if the neuron is excitatory 
 				if (kbegin != kend)
 				for (MexVector<size_t>::iterator k = kbegin; k < kend; ++k){
 					size_t CurrSynIndex = *k;
 					MexVector<Synapse>::iterator CurrSynPtr = Network.begin() + CurrSynIndex;
 					int SynapseSpikeTime = LastSpikedTimeSynapse[CurrSynIndex];
-					if (SynapseSpikeTime >= 0){
+					
+					// Implementing STDP if Incoming synapse is Exc
+					if (SynapseSpikeTime >= 0 && CurrSynIndex < IntVars.MExc){
 						size_t SpikeTimeDiffCurr = time - SynapseSpikeTime;
-						WeightDeriv[CurrSynIndex] += ((SpikeTimeDiffCurr < STDPMaxWinLen) ? ExpVect[SpikeTimeDiffCurr] : 0);
+
+						// NMDA induced ST-STDP
+						float Curr_NMDA_Activation = NMDA_Activation[CurrSynIndex] * pow(NMDA_ActivationDecay, SpikeTimeDiffCurr);
+						if (Curr_NMDA_Activation >= NMDA_Ton & NMDA_SynEffectiveness[CurrSynIndex] == 1)
+							NMDA_SynEffectiveness[CurrSynIndex] = 10;
+						else if (Curr_NMDA_Activation <= NMDA_Toff & NMDA_SynEffectiveness[CurrSynIndex] == 10)
+							NMDA_SynEffectiveness[CurrSynIndex] = 1;
+						if (j < IntVars.NExc)
+							WeightDeriv[CurrSynIndex] += ((SpikeTimeDiffCurr < STDPMaxWinLen) ? ExpVect[SpikeTimeDiffCurr] : 0);
 					}
 				}
 			}
@@ -213,6 +255,12 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 		this->LSTSynOut = MexMatrix<int>(TimeDimLen, M);
 
+	if (OutputControl & OutOps::NMDA_ACTIVATION_REQ)
+		this->NMDA_ActivationOut = MexMatrix<float>(TimeDimLen, M);
+
+	if (OutputControl & OutOps::NMDA_SYN_EFFECTIVENESS_REQ)
+		this->NMDA_SynEffectivenessOut = MexMatrix<int>(TimeDimLen, M);
+
 	if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
 		this->SpikeQueueOut = MexVector<MexVector<MexVector<int> > >(TimeDimLen,
 			MexVector<MexVector<int> >(onemsbyTstep * DelayRange, MexVector<int>()));
@@ -266,6 +314,8 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->Weight = MexVector<float>(M);
 	this->LSTNeuron = MexVector<int>(N);
 	this->LSTSyn = MexVector<int>(M);
+	this->NMDA_Activation = MexVector<float>(M);
+	this->NMDA_SynEffectiveness = MexVector<int>(M);
 	this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
 	this->CurrentQIndex = -1;
 	this->Time = -1;
@@ -323,6 +373,12 @@ void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct
 		StateOut.LSTNeuronOut[CurrentInsertPos] = LSTNeuron;
 	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 		StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
+
+	// Storing NMDA State Variables
+	if (OutputControl & OutOps::NMDA_ACTIVATION_REQ)
+		StateOut.NMDA_ActivationOut[CurrentInsertPos] = NMDA_Activation;
+	if (OutputControl & OutOps::NMDA_SYN_EFFECTIVENESS_REQ)
+		StateOut.NMDA_SynEffectivenessOut[CurrentInsertPos] = NMDA_SynEffectiveness;
 
 	// Storing Itot
 	if (OutputControl & OutOps::I_TOT_REQ){
@@ -385,6 +441,12 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 		if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 			StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
 
+		// Storing NMDA State Variables
+		if (OutputControl & OutOps::NMDA_ACTIVATION_REQ)
+			StateOut.NMDA_ActivationOut[CurrentInsertPos] = NMDA_Activation;
+		if (OutputControl & OutOps::NMDA_SYN_EFFECTIVENESS_REQ)
+			StateOut.NMDA_SynEffectivenessOut[CurrentInsertPos] = NMDA_SynEffectiveness;
+
 		// Storing Itot
 		if (OutputControl & OutOps::I_TOT_REQ){
 			for (int j = 0; j < N; ++j)
@@ -436,6 +498,8 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 	SingleStateOut.CurrentQIndex = CurrentQIndex;
 	SingleStateOut.LSTNeuron = LSTNeuron;
 	SingleStateOut.LSTSyn = LSTSyn;
+	SingleStateOut.NMDA_Activation = NMDA_Activation;
+	SingleStateOut.NMDA_SynEffectiveness = NMDA_SynEffectiveness;
 	SingleStateOut.Time = Time;
 }
 
@@ -476,12 +540,16 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.StatusDisplayInterval = StatusDisplayInterval ;
 
 	// Optional Simulation Algorithm Parameters
-	InputStateOut.I0                 = I0                 ;
-	InputStateOut.STDPDecayFactor    = STDPDecayFactor    ;
-	InputStateOut.STDPMaxWinLen      = STDPMaxWinLen      ;
-	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
-	InputStateOut.W0                 = W0                 ;
-	InputStateOut.MaxSynWeight       = MaxSynWeight       ;
+	InputStateOut.I0                   = I0                  ;
+	InputStateOut.STDPDecayFactor      = STDPDecayFactor     ;
+	InputStateOut.STDPMaxWinLen        = STDPMaxWinLen       ;
+	InputStateOut.CurrentDecayFactor   = CurrentDecayFactor  ;
+	InputStateOut.W0                   = W0                  ;
+	InputStateOut.MaxSynWeight         = MaxSynWeight        ;
+	InputStateOut.NMDA_ActivationInc   = NMDA_ActivationInc  ;
+	InputStateOut.NMDA_ActivationDecay = NMDA_ActivationDecay;
+	InputStateOut.NMDA_Ton             = NMDA_Ton            ;
+	InputStateOut.NMDA_Toff            = NMDA_Toff           ;
 
 	// Assigining IExt Input Vars
 	IExtInterface::doInputVarsOutput(

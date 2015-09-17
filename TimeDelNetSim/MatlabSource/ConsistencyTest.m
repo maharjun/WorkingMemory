@@ -63,9 +63,9 @@ InputStruct.OutputControl                  = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval          = int32(2000);
 InputStruct.InitialState.Iext.IExtGenState = uint32(30);
 
-InputStruct.I0 = single(1.3);
-InputStruct.STDPDecayFactor = single(0.85^(1.0 / double(InputStruct.onemsbyTstep)));
-InputStruct.STDPMaxWinLen = int32(100);
+InputStruct.MaxSynWeight       = single(8);
+InputStruct.NMDA_ActivationInc = single(0.6);
+InputStruct.Iext.IExtAmplitude = single(30);
 
 InputStruct.OutputFile = 'SimResults1000DebugSparseLong.mat';
 save('../Data/InputData.mat', 'InputStruct');
@@ -215,6 +215,10 @@ InputStruct.NoOfms                = int32(2*60*1000);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval = int32(2000);
+
+InputStruct.MaxSynWeight       = single(8);
+InputStruct.NMDA_ActivationInc = single(0.5);
+InputStruct.Iext.IExtAmplitude = single(30);
 
 InputStruct.OutputFile = 'SimResults1000DebugSpikeListfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');

@@ -17,8 +17,8 @@ int main(){
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
 
 	// Open Memory Usage Account
-	size_t MemAccountKey =  MemCounter::OpenMemAccount(size_t(3) << 29);
-
+	size_t MemAccountKey =  MemCounter::OpenMemAccount(size_t(4) << 29);
+	
 	// Start Data Input from MAT File
 	mxArrayPtr  Input      = nullptr, 
 				InputState = nullptr,

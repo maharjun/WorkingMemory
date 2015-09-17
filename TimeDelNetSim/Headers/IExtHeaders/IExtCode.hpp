@@ -25,6 +25,7 @@ namespace IExtInterface
 			I_EXT_REQ           = (1 << 0),
 			I_EXT_GEN_STATE_REQ = (1 << 1),
 			I_EXT_NEURON_REQ    = (1 << 2),
+			I_RAND_NEURON_REQ   = (1 << 3),
 		};
 	};
 
@@ -32,11 +33,12 @@ namespace IExtInterface
 		MexVector<float>    Iext;
 		MexVector<uint32_t> IExtGenState;
 		int                 IExtNeuron;
+		int                 IRandNeuron;
 
 		SingleStateStruct() :
 			Iext(),
 			IExtGenState(),
-			IExtNeuron() {}
+			IRandNeuron() {}
 
 		void initialize(
 			const IExtInterface::InternalVarsStruct & IExtInternalVarsStruct,
@@ -48,8 +50,9 @@ namespace IExtInterface
 		// State Variables area part of SingleStateStruct
 
 		// Optional Simulation Algorithm Parameters
-		float IExtScaleFactor;
-		float IExtDecayFactor;
+		float IRandAmplitude;
+		float IRandDecayFactor;
+		float IExtAmplitude;
 
 		size_t OutputControl;
 
@@ -60,11 +63,12 @@ namespace IExtInterface
 		MexMatrix<float>    IextOut;
 		MexMatrix<uint32_t> IExtGenStateOut;
 		MexVector<int>      IExtNeuronOut;
+		MexVector<int>      IRandNeuronOut;
 
 		StateOutStruct() :
 			IextOut(),
 			IExtGenStateOut(),
-			IExtNeuronOut() {}
+			IRandNeuronOut() {}
 
 		void initialize(
 			const IExtInterface::InternalVarsStruct & IExtInternalVarsStruct,
@@ -82,18 +86,21 @@ namespace IExtInterface
 
 	struct InternalVarsStruct {
 
-		float IExtScaleFactor;
-		float IExtDecayFactor;
+		float IRandAmplitude;
+		float IRandDecayFactor;
+		float IExtAmplitude;
 
 		size_t OutputControl;
 
 		MexVector<float> Iext;
 		XorShiftPlus IExtGen;
 		size_t IExtNeuron;
+		size_t IRandNeuron;
 
 		InternalVarsStruct() :
 			Iext(),
 			IExtGen(), 
+			IRandNeuron(0),
 			IExtNeuron(0) {}
 	};
 
