@@ -5,30 +5,41 @@ EndTime = double((20)*1000*InputStruct.onemsbyTstep);
 
 RelTimes = StateVarsSpikeList.Time >= BegTime & StateVarsSpikeList.Time < EndTime;
 BegTimeIndex = find(RelTimes, 1, 'first');
-EndTimeIndex = find(RelTimes, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange - 1;
+EndTimeIndex = find(RelTimes, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange;
+% All Spikes generated in time corresponding to 
+% 
+%   find(RelTimes, 1, 'first'):find(RelTimes, 1, 'last')
+% 
+% arrive in the time interval corresponding to
+% 
+%  find(RelTimes, 1, 'first')+1:find(RelTimes, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange;
 
 % Calculating Total number of spikes
 SpikeSynInds = OutputVarsSpikeList.SpikeList.SpikeSynInds;
 TimeRchdStartInds = OutputVarsSpikeList.SpikeList.TimeRchdStartInds;
-TotalLength = double(TimeRchdStartInds(EndTimeIndex + 1) - TimeRchdStartInds(BegTimeIndex));
+TotalLength = double(TimeRchdStartInds(EndTimeIndex) - TimeRchdStartInds(BegTimeIndex));
+% TimeRchdStartInds(EndTimeIndex) = StartingIndex of Spikes landing at time
+% instant StateVarsSpikeList.Time(EndTimeIndex + 1)
+% Thus the above counts all spikes landing in
+% StateVarsSpikeList.Time(BegTimeIndex+1:EndTimeIndex + 1)
+
 
 % Calculating the vector of time instants corresponding to arrival times
-% (minus 1)
-
 ArrivalTimeVect = zeros(TotalLength, 1);
-
 InsertIndex = 1;
-Time = StateVarsSpikeList.Time(BegTimeIndex);
-for i = BegTimeIndex:EndTimeIndex
+% By the nature of output, at time t, we have
+% the spikes that arrive at t+1
+Time = StateVarsSpikeList.Time(BegTimeIndex) + 1;
+for i = BegTimeIndex:EndTimeIndex-1
 	NumofElemsCurrTime = double(TimeRchdStartInds(i+1) - TimeRchdStartInds(i));
-	ArrivalTimeVect(InsertIndex:InsertIndex + NumofElemsCurrTime - 1) = Time + 1; % By the nature of output, at time t, we have
-	                                                                              % the spikes that arrive at t+1
+	ArrivalTimeVect(InsertIndex:InsertIndex + NumofElemsCurrTime - 1) = Time; 
 	Time = Time+1;
 	InsertIndex = InsertIndex + NumofElemsCurrTime;
 end
 
 % Straightening out the Cell Array.
-SpikeListVect = SpikeSynInds(TimeRchdStartInds(BegTimeIndex)+1:TimeRchdStartInds(EndTimeIndex+1)) + 1; % +1 for the C++ to matlab 
+SpikeListVect = SpikeSynInds(TimeRchdStartInds(BegTimeIndex)+1:TimeRchdStartInds(EndTimeIndex)) + 1;
+                                         % +1 for the C++ to matlab 
                                          % indexing convention conversion
 
 % Calculating Synapse parameter vectors
@@ -131,7 +142,7 @@ GenerationTimeVectFiltered     = GenerationTimeVect         (EffectiveArrivedSpi
 figure;
 gplot(EffectiveSpikeMovementGraph, [GenerationTimeVect - BegTime, SpikePreSynNeuronVect], '-r');
 hold on;
-gplot(DelayEffectiveSpikeMovementGraph, [GenerationTimeVect - BegTime, SpikePreSynNeuronVect], '-g');
+% gplot(DelayEffectiveSpikeMovementGraph, [GenerationTimeVect - BegTime, SpikePreSynNeuronVect], '-g');
 plot(double(GenerationTimeVect - BegTime), double(SpikePreSynNeuronVect), '.', 'MarkerSize', 5);
 %% Random Plotting
 RelNeuron = 810;
