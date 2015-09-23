@@ -4,3 +4,6 @@
 [submodule "MexMemoryInterfacing"]
 	path = MexMemoryInterfacing
 	url = https://github.com/maharjun/MexMemoryInterfacing
+[submodule "External-Input-Current"]
+	path = TimeDelNetSim/Headers/IExtHeaders
+	url = F:/Users/Arjun/Desktop/Acads/SRE/NeuronSimCode/External-Input-Current/.git
