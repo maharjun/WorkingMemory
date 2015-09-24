@@ -57,9 +57,9 @@ InputStruct.U = single(0.2*InputStruct.V);
 
 InputStruct.onemsbyTstep                   = int32(1);
 InputStruct.NoOfms                         = int32(80*1000);
-InputStruct.DelayRange                     = int32(RecurrentNetParams.DelayRange);
+InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize                = int32(4000);
-InputStruct.OutputControl                  = strjoin(OutputOptions);
+InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval          = int32(2000);
 InputStruct.InitialState.Iext.IExtGenState = uint32(30);
 
@@ -221,3 +221,6 @@ save('../Data/InputData.mat', 'InputStruct');
 
 [OutputVarsSpikeList, StateVarsSpikeList, FinalStateSpikeList, InputStateSpikeList] = TimeDelNetSim(InputStruct);
 clear functions;
+
+%% Plotting SpikeList
+PlotSpikeList(58, 60, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
