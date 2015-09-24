@@ -212,4 +212,7 @@ InputStruct.StatusDisplayInterval = int32(8000);
 InputStruct.OutputFile = 'SimResults1000DebugSpikeListfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');
 
-[OutputVarsDetailed, StateVarsDetailed, FinalStateDetailed, InputStateDetailed] = TimeDelNetSim(InputStruct);
+[OutputVarsSpikeList, StateVarsSpikeList, FinalStateSpikeList, InputStateSpikeList] = TimeDelNetSim(InputStruct);
+
+%% Plotting SpikeList
+PlotSpikeList(18, 20, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
