@@ -57,15 +57,16 @@ InputStruct.U = single(0.2*InputStruct.V);
 
 InputStruct.onemsbyTstep                   = int32(1);
 InputStruct.NoOfms                         = int32(80*1000);
-InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
+InputStruct.DelayRange                     = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize                = int32(4000);
-InputStruct.OutputControl         = strjoin(OutputOptions);
+InputStruct.OutputControl                  = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval          = int32(2000);
 InputStruct.InitialState.Iext.IExtGenState = uint32(30);
 
-InputStruct.I0 = single(1.3);
-InputStruct.STDPDecayFactor = single(0.85^(1.0 / double(InputStruct.onemsbyTstep)));
-InputStruct.STDPMaxWinLen = int32(100);
+InputStruct.MaxSynWeight       = single(8);
+InputStruct.ST_STDP_MaxRelativeInc = single(2.5);
+InputStruct.Iext.IExtAmplitude = single(0);
+InputStruct.Iext.AvgRandSpikeFreq = single(1);
 
 InputStruct.OutputFile = 'SimResults1000DebugSparseLong.mat';
 save('../Data/InputData.mat', 'InputStruct');
@@ -216,6 +217,10 @@ InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval = int32(2000);
 
+InputStruct.ST_STDP_MaxRelativeInc = single(2.5);
+InputStruct.Iext.IExtAmplitude = single(30);
+InputStruct.Iext.AvgRandSpikeFreq = single(0.3);
+
 InputStruct.OutputFile = 'SimResults1000DebugSpikeListfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');
 
@@ -223,4 +228,4 @@ save('../Data/InputData.mat', 'InputStruct');
 clear functions;
 
 %% Plotting SpikeList
-PlotSpikeList(58, 60, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
+PlotSpikeList(75, 90, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);

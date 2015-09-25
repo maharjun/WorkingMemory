@@ -44,6 +44,9 @@ void CountingSort(int N, MexVector<Synapse> &Network, MexVector<size_t> &indirec
 }
 
 void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) const{
+
+	// Aliasing IntVars Variables
+	#pragma region Aliasing IntVars
 	const float &I0 = IntVars.I0;
 	auto &Network           = IntVars.Network;
 	auto &Iin                  = IntVars.Iin;
@@ -55,29 +58,57 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 
 	auto &STDPMaxWinLen        = IntVars.STDPMaxWinLen;
 
+	auto & ST_STDP_RelativeInc         = IntVars.ST_STDP_RelativeInc;
+	auto & ST_STDP_DecayWithTime       = IntVars.ST_STDP_DecayWithTime;
+	auto & ST_STDP_EffectMaxAntiCausal = IntVars.ST_STDP_EffectMaxAntiCausal;
+	auto & ST_STDP_EffectDecay         = IntVars.ST_STDP_EffectDecay;
+	#pragma endregion
+
 	int *begin = BlockedRange.begin();
 	int *end = BlockedRange.end();
 	for (int * iter = begin; iter < end; ++iter){
 		Synapse CurrentSynapse = Network[*iter];
 		int CurrentSynapseInd = *iter;
+
+		// Initializing relevant constants
+		auto CurrLSTNeuron   = LastSpikedTimeNeuron[CurrentSynapse.NEnd - 1];
+		auto CurrLSTSyn      = LastSpikedTimeSyn[CurrentSynapseInd];
+		auto CurrRelativeInc = ST_STDP_RelativeInc[CurrentSynapseInd];
+
+		// Calculating Actual Value of CurrRelativeInc from last update for Exc-Exc Synapse
+		if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
+		if (CurrLSTNeuron != -1 && CurrLSTSyn != -1) {
+			// This means Update has happened before.
+			// The time of the update is as below
+			auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
+			CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
+		}
+
+		// Performing Synaptic Current Injection Using CurrRelativeInc and Weight of synapse
 		__m128 AddedCurrent;
 		AddedCurrent.m128_u64[0] = 0; AddedCurrent.m128_u64[1] = 0;
-		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight;
+		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight*(1 + CurrRelativeInc);
 		AddedCurrent.m128_u32[0] += (32 << 23);
 
 		Iin[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
 
-		LastSpikedTimeSyn[CurrentSynapseInd] = time;
-		int NeuronSpikeTime = LastSpikedTimeNeuron[CurrentSynapse.NEnd - 1];
-		if (NeuronSpikeTime >= 0){
-			size_t SpikeTimeDiffCurr = time - NeuronSpikeTime - 1;
+		// Performing the LT and ST STDP updates for Exc-Exc Synapse
+		if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
+		if (CurrLSTNeuron >= 0){
+			size_t SpikeTimeDiffCurr = time - CurrLSTNeuron - 1;
+			ST_STDP_RelativeInc[CurrentSynapseInd] -= ST_STDP_EffectMaxAntiCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
+			ST_STDP_RelativeInc[CurrentSynapseInd] = (ST_STDP_RelativeInc[CurrentSynapseInd] < 0) ? 0 : ST_STDP_RelativeInc[CurrentSynapseInd];
 			WeightDeriv[CurrentSynapseInd] -= ((SpikeTimeDiffCurr < STDPMaxWinLen) ? 1.2f*ExpVect[SpikeTimeDiffCurr] : 0);
 		}
+
+		LastSpikedTimeSyn[CurrentSynapseInd] = time;
 	}
 }
 
 void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 
+	// Initializing Invars Variables
+	#pragma region Initializing Intvars
 	auto &Vnow = IntVars.V;
 	auto &Unow = IntVars.U;
 
@@ -100,9 +131,16 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 	auto &LastSpikedTimeNeuron = IntVars.LSTNeuron;
 	auto &LastSpikedTimeSynapse = IntVars.LSTSyn;
 
+	auto & ST_STDP_RelativeInc     = IntVars.ST_STDP_RelativeInc;
+	auto & ST_STDP_DecayWithTime   = IntVars.ST_STDP_DecayWithTime;
+	auto & ST_STDP_EffectMaxCausal = IntVars.ST_STDP_EffectMaxCausal;
+	auto & ST_STDP_EffectDecay     = IntVars.ST_STDP_EffectDecay;
+	auto & ST_STDP_MaxRelativeInc  = IntVars.ST_STDP_MaxRelativeInc;
+
 	auto &onemsbyTstep = IntVars.onemsbyTstep;
 	auto &time = IntVars.Time;
 	auto &STDPMaxWinLen = IntVars.STDPMaxWinLen;
+	#pragma endregion
 
 	size_t QueueSize = onemsbyTstep*IntVars.DelayRange;
 	size_t RangeBeg = Range.begin();
@@ -133,21 +171,40 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 				Vnow[j] = Neurons[j].c;
 				Unow[j] += Neurons[j].d;
 
-				//NSpikesGenminProc += ((PreSynNeuronSectionBeg[j] >= 0) ? PreSynNeuronSectionEnd[j] - PreSynNeuronSectionBeg[j] : 0);
-				LastSpikedTimeNeuron[j] = time;
 				//Space to implement any causal Learning Rule
 				MexVector<size_t>::iterator kbegin = AuxArray.begin() + PostSynNeuronSectionBeg[j];
 				MexVector<size_t>::iterator kend   = AuxArray.begin() + PostSynNeuronSectionEnd[j];
-				if (kbegin != kend)
+				
+				// Implementing STDP only for Exc-Exc Synapses (remaining condition inside loop)
+				if (kbegin != kend && j < IntVars.NExc)
 				for (MexVector<size_t>::iterator k = kbegin; k < kend; ++k){
 					size_t CurrSynIndex = *k;
 					MexVector<Synapse>::iterator CurrSynPtr = Network.begin() + CurrSynIndex;
-					int SynapseSpikeTime = LastSpikedTimeSynapse[CurrSynIndex];
-					if (SynapseSpikeTime >= 0){
-						size_t SpikeTimeDiffCurr = time - SynapseSpikeTime;
+
+					// Initializing relevant constants
+					auto CurrLSTNeuron   = LastSpikedTimeNeuron[j];
+					auto CurrLSTSyn      = LastSpikedTimeSynapse[CurrSynIndex];
+					auto CurrRelativeInc = ST_STDP_RelativeInc[CurrSynIndex];
+
+					// If Synapse is Excitatory and has spiked before
+					if (CurrLSTSyn != -1 && CurrSynIndex < IntVars.MExc) {
+						// Calculating actual value of CurrRelativeInc
+						if (CurrLSTNeuron != -1) {
+							// This means Update has happened before.
+							// The time of the update is as below
+							auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
+							CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
+						}
+
+						// Performing Causal Long Term and Short Term STDP Updates
+						size_t SpikeTimeDiffCurr = time - CurrLSTSyn;
+						CurrRelativeInc += ST_STDP_EffectMaxCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
+						ST_STDP_RelativeInc[CurrSynIndex] = (CurrRelativeInc > ST_STDP_MaxRelativeInc)? ST_STDP_MaxRelativeInc : CurrRelativeInc;
 						WeightDeriv[CurrSynIndex] += ((SpikeTimeDiffCurr < STDPMaxWinLen) ? ExpVect[SpikeTimeDiffCurr] : 0);
 					}
 				}
+
+				LastSpikedTimeNeuron[j] = time;
 			}
 		}
 	}
@@ -201,6 +258,10 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ)
 		this->WeightDerivOut = MexMatrix<float>(TimeDimLen, M);
+	
+	// Initializing Output State variables for Short Term STDP
+	if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
+		this->ST_STDP_RelativeIncOut = MexMatrix<float>(TimeDimLen, M);
 
 	// Initializing Output State variables for IExt variables
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
@@ -266,6 +327,7 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->Weight = MexVector<float>(M);
 	this->LSTNeuron = MexVector<int>(N);
 	this->LSTSyn = MexVector<int>(M);
+	this->ST_STDP_RelativeInc = MexVector<float>(M);
 	this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
 	this->CurrentQIndex = -1;
 	this->Time = -1;
@@ -323,6 +385,10 @@ void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct
 		StateOut.LSTNeuronOut[CurrentInsertPos] = LSTNeuron;
 	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 		StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
+
+	// Storing Short Term STDP State Variables
+	if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
+		StateOut.ST_STDP_RelativeIncOut[CurrentInsertPos] = ST_STDP_RelativeInc;
 
 	// Storing Itot
 	if (OutputControl & OutOps::I_TOT_REQ){
@@ -385,6 +451,10 @@ void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &
 		if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
 			StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
 
+		// Storing Short Term STDP State Variables
+		if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
+			StateOut.ST_STDP_RelativeIncOut[CurrentInsertPos] = ST_STDP_RelativeInc;
+
 		// Storing Itot
 		if (OutputControl & OutOps::I_TOT_REQ){
 			for (int j = 0; j < N; ++j)
@@ -430,6 +500,9 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 		SingleStateOut.Weight[j] = Network[j].Weight;
 	}
 	SingleStateOut.WeightDeriv = WeightDeriv;
+
+	SingleStateOut.ST_STDP_RelativeInc = ST_STDP_RelativeInc;
+
 	for (int j = 0; j < QueueSize; ++j){
 		SingleStateOut.SpikeQueue[j] = SpikeQueue[j];
 	}
@@ -482,6 +555,13 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
 	InputStateOut.W0                 = W0                 ;
 	InputStateOut.MaxSynWeight       = MaxSynWeight       ;
+
+	// Short Term STDP Parameters
+	InputStateOut.ST_STDP_EffectDecay         = ST_STDP_EffectDecay        ;
+	InputStateOut.ST_STDP_DecayWithTime       = ST_STDP_DecayWithTime      ;
+	InputStateOut.ST_STDP_EffectMaxCausal     = ST_STDP_EffectMaxCausal    ;
+	InputStateOut.ST_STDP_EffectMaxAntiCausal = ST_STDP_EffectMaxAntiCausal;
+	InputStateOut.ST_STDP_MaxRelativeInc      = ST_STDP_MaxRelativeInc     ;
 
 	// Assigining IExt Input Vars
 	IExtInterface::doInputVarsOutput(

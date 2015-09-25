@@ -39,6 +39,7 @@ struct OutOps{
 		V_REQ               = (1 << 12),
 		WEIGHT_DERIV_REQ    = (1 << 13), 
 		WEIGHT_REQ          = (1 << 14), 
+		ST_STDP_RELATIVE_INC = (1 << 15)
 	};
 };
 
@@ -88,6 +89,9 @@ struct SingleStateStruct{
 	MexVector<float> Iin;
 	MexVector<float> WeightDeriv;
 	
+	// Short Term STDP State Variables
+	MexVector<float> ST_STDP_RelativeInc;
+
 	// IextInterface state variable component
 	IExtInterface::SingleStateStruct IextInterface;
 
@@ -103,6 +107,7 @@ struct SingleStateStruct{
 		U(),
 		Iin(),
 		WeightDeriv(),
+		ST_STDP_RelativeInc(),
 		IextInterface(),
 		SpikeQueue(),
 		LSTNeuron(),
@@ -150,6 +155,13 @@ struct InputArgs{
 	float MaxSynWeight;
 	float W0;
 
+	// Short Term STDP variables
+	float ST_STDP_EffectDecay;
+	float ST_STDP_DecayWithTime;
+	float ST_STDP_EffectMaxCausal;
+	float ST_STDP_EffectMaxAntiCausal;
+	float ST_STDP_MaxRelativeInc;
+
 	InputArgs() :
 		NStart(),
 		NEnd(),
@@ -195,6 +207,13 @@ struct InternalVars{
 	const float MaxSynWeight;
 	const float W0;
 
+	// Short Term STDP Variables
+	const float ST_STDP_EffectDecay;
+	const float ST_STDP_DecayWithTime;
+	const float ST_STDP_EffectMaxCausal;
+	const float ST_STDP_EffectMaxAntiCausal;
+	const float ST_STDP_MaxRelativeInc;
+
 	// Scalar State Variables
 	// Time is defined earlier for reasons of initialization sequence
 	size_t CurrentQIndex;
@@ -209,6 +228,9 @@ struct InternalVars{
 	MexVector<float> &U;
 	atomicLongVect Iin;
 	MexVector<float> &WeightDeriv;
+
+	// Short Term STDP State variables
+	MexVector<float> &ST_STDP_RelativeInc;
 
 	IExtInterface::InternalVarsStruct IextInterface;
 
@@ -263,6 +285,7 @@ struct InternalVars{
 		Iin                   (N), 
 		// Iin is defined separately as an atomic vect.
 		WeightDeriv           (IArgs.InitialState.WeightDeriv),
+		ST_STDP_RelativeInc   (IArgs.InitialState.ST_STDP_RelativeInc),
 		IExtGen               (),
 		CurrentGenNeuron      (0),
 		SpikeQueue            (IArgs.InitialState.SpikeQueue),
@@ -289,7 +312,13 @@ struct InternalVars{
 		CurrentDecayFactor (IArgs.CurrentDecayFactor),
 		STDPDecayFactor    (IArgs.STDPDecayFactor),
 		W0                 (IArgs.W0),
-		MaxSynWeight       (IArgs.MaxSynWeight){
+		MaxSynWeight       (IArgs.MaxSynWeight),
+
+		ST_STDP_EffectDecay         (IArgs.ST_STDP_EffectDecay        ),
+		ST_STDP_DecayWithTime       (IArgs.ST_STDP_DecayWithTime      ),
+		ST_STDP_EffectMaxCausal     (IArgs.ST_STDP_EffectMaxCausal    ),
+		ST_STDP_EffectMaxAntiCausal (IArgs.ST_STDP_EffectMaxAntiCausal),
+		ST_STDP_MaxRelativeInc      (IArgs.ST_STDP_MaxRelativeInc     ) {
 		
 		// Setting up Network and Neurons
 		Network.resize(M);
@@ -354,6 +383,10 @@ struct InternalVars{
 			// Return Exception
 			return;
 		}
+
+		// Setting Initial Conditions for Short term STDP State Variables
+		if (IArgs.InitialState.ST_STDP_RelativeInc.istrulyempty())
+			ST_STDP_RelativeInc.resize(M, 0.0f);
 
 		// Initializing InternalVars for IextInternal giving it
 		//   1. The IExtInterface::InternalVarsStruct in InternalVars
@@ -434,6 +467,9 @@ struct StateVarsOutStruct{
 	MexMatrix<float> IinOut;
 	MexMatrix<float> WeightDerivOut;
 
+	// Short Term STDP Variables
+	MexMatrix<float> ST_STDP_RelativeIncOut;
+
 	// IExt Interface Output State variables
 	IExtInterface::StateOutStruct IextInterface;
 	
@@ -450,6 +486,7 @@ struct StateVarsOutStruct{
 		UOut(),
 		IinOut(),
 		WeightDerivOut(),
+		ST_STDP_RelativeIncOut(),
 		IextInterface(),
 		TimeOut(),
 		SpikeQueueOut(),

@@ -49,6 +49,7 @@ int getOutputControl(char* OutputControlSequence){
 						   | OutOps::SPIKE_QUEUE_REQ
 						   | OutOps::LASTSPIKED_NEU_REQ
 						   | OutOps::LASTSPIKED_SYN_REQ
+						   | OutOps::ST_STDP_RELATIVE_INC
 						   | OutOps::FINAL_STATE_REQ;
 		if (!_strcmpi(SequenceWord, "V"))
 			OutputControl = AddorRemove ? 
@@ -86,6 +87,10 @@ int getOutputControl(char* OutputControlSequence){
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::LASTSPIKED_SYN_REQ : 
 					 OutputControl & ~(OutOps::LASTSPIKED_SYN_REQ);
+		if (!_strcmpi(SequenceWord, "ST_STDP_RelativeInc"))
+			OutputControl = AddorRemove ? 
+			         OutputControl | OutOps::ST_STDP_RELATIVE_INC : 
+					 OutputControl & ~(OutOps::ST_STDP_RELATIVE_INC);
 		if (!_strcmpi(SequenceWord, "Itot"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_TOT_REQ : 
@@ -127,6 +132,13 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	InputArgList.W0                 = 0.1f;
 	InputArgList.MaxSynWeight       = 10.0;
 
+	// set default values for Short Term STDP Parameters
+	InputArgList.ST_STDP_EffectDecay         = exp(-1/(20.0f*InputArgList.onemsbyTstep))  ;
+	InputArgList.ST_STDP_DecayWithTime       = exp(-1/(5000.0f*InputArgList.onemsbyTstep));
+	InputArgList.ST_STDP_EffectMaxCausal     = 0.1f                                       ;
+	InputArgList.ST_STDP_EffectMaxAntiCausal = 0.12f                                      ;
+	InputArgList.ST_STDP_MaxRelativeInc      = 3.0f                                       ;
+
 	// set default values for Scalar State Variables
 	InputArgList.InitialState.CurrentQIndex = 0;
 	InputArgList.InitialState.Time = 0;
@@ -159,6 +171,13 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	getInputfromStruct<float>(MatlabInputStruct, "W0"                , InputArgList.W0                );
 	getInputfromStruct<float>(MatlabInputStruct, "MaxSynWeight"      , InputArgList.MaxSynWeight      );
 
+	// Setting Values for Short Term STDP Parameters
+	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_EffectDecay"        , InputArgList.ST_STDP_EffectDecay        );
+	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_DecayWithTime"      , InputArgList.ST_STDP_DecayWithTime      );
+	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_EffectMaxCausal"    , InputArgList.ST_STDP_EffectMaxCausal    );
+	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_EffectMaxAntiCausal", InputArgList.ST_STDP_EffectMaxAntiCausal);
+	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_MaxRelativeInc"     , InputArgList.ST_STDP_MaxRelativeInc     );
+	
 	// Initializing Time
 	getInputfromStruct<int>(MatlabInputStruct, "InitialState.Time", InputArgList.InitialState.Time);
 
@@ -191,6 +210,9 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 
 	// Initializing LastSpikedTimeSyn
 	getInputfromStruct<int>(MatlabInputStruct, "InitialState.LSTSyn", InputArgList.InitialState.LSTSyn, 1, "required_size", M);
+
+	// Initializing Short term STDP State Variables
+	getInputfromStruct<float>(MatlabInputStruct, "InitialState.ST_STDP_RelativeInc", InputArgList.InitialState.ST_STDP_RelativeInc, 1, "required_size", M);
 
 	// Initializing IExtInterface Input Variables
 	IExtInterface::takeInputVarsFromMatlabStruct(InputArgList.IextInterface, MatlabInputStruct, InputArgList);
@@ -265,6 +287,7 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 		"SpikeQueue",
 		"LSTNeuron",
 		"LSTSyn",
+		"ST_STDP_RelativeInc",
 		nullptr
 	};
 	int NFields = 0;
@@ -299,6 +322,9 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 	mxSetField(ReturnPointer, 0, "LSTNeuron"     , assignmxArray(Output.LSTNeuronOut, mxINT32_CLASS));
 	mxSetField(ReturnPointer, 0, "LSTSyn"        , assignmxArray(Output.LSTSynOut, mxINT32_CLASS));
 
+	// Assigning Short Term STDP related information
+	mxSetField(ReturnPointer, 0, "ST_STDP_RelativeInc", assignmxArray(Output.ST_STDP_RelativeIncOut, mxSINGLE_CLASS));
+
 	return ReturnPointer;
 }
 
@@ -315,6 +341,7 @@ mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 		"SpikeQueue",
 		"LSTNeuron",
 		"LSTSyn",
+		"ST_STDP_RelativeInc",
 		nullptr
 	};
 	int NFields = 0;
@@ -353,6 +380,9 @@ mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 	mxSetField(ReturnPointer, 0, "LSTNeuron"         , assignmxArray(SingleStateList.LSTNeuron, mxINT32_CLASS));
 	mxSetField(ReturnPointer, 0, "LSTSyn"            , assignmxArray(SingleStateList.LSTSyn, mxINT32_CLASS));
 
+	// Assigning Short Term STDP related information
+	mxSetField(ReturnPointer, 0, "ST_STDP_RelativeInc", assignmxArray(SingleStateList.ST_STDP_RelativeInc, mxSINGLE_CLASS));
+
 	return ReturnPointer;
 }
 
@@ -376,6 +406,11 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 		"STDPMaxWinLen"        ,
 		"CurrentDecayFactor"   ,
 		"W0"                   ,
+		"ST_STDP_EffectDecay"        ,
+		"ST_STDP_DecayWithTime"      ,
+		"ST_STDP_EffectMaxCausal"    ,
+		"ST_STDP_EffectMaxAntiCausal",
+		"ST_STDP_MaxRelativeInc"     ,
 		"MaxSynWeight"         ,
 		"StorageStepSize"      ,
 		"OutputControl"        ,
@@ -415,6 +450,13 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 	mxSetField(ReturnPointer, 0, "W0"                  , assignmxArray(InputStateStruct.W0                  , mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "MaxSynWeight"        , assignmxArray(InputStateStruct.MaxSynWeight        , mxSINGLE_CLASS));
 
+	// Assigning Short Term STDP Parameters
+	mxSetField(ReturnPointer, 0, "ST_STDP_EffectDecay"        , assignmxArray(InputStateStruct.ST_STDP_EffectDecay        , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "ST_STDP_DecayWithTime"      , assignmxArray(InputStateStruct.ST_STDP_DecayWithTime      , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "ST_STDP_EffectMaxCausal"    , assignmxArray(InputStateStruct.ST_STDP_EffectMaxCausal    , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "ST_STDP_EffectMaxAntiCausal", assignmxArray(InputStateStruct.ST_STDP_EffectMaxAntiCausal, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "ST_STDP_MaxRelativeInc"     , assignmxArray(InputStateStruct.ST_STDP_MaxRelativeInc     , mxSINGLE_CLASS));
+	
 	// Assigning IExtinterface Input Variables
 	mxArrayPtr mxIExtInputVars = IExtInterface::putInputVarstoMATLABStruct(InputStateStruct.IextInterface);
 	mxSetField(ReturnPointer, 0, "Iext", mxIExtInputVars);
