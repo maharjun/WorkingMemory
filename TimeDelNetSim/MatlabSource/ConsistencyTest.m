@@ -122,7 +122,7 @@ clear OutputVars StateVars InputState FinalState;
 
 %%
 % Loading and renaming variables for sparse simulation
-load('../Data/SimResults1000DebugSparseLong.mat');
+load('../Data/SimResults1000Sparse5Hours_2.mat');
 clear OutputVarsSparse StateVarsSparse InputStateSparse FinalStateSparse;
 OutputVarsSparse = OutputVars;
 StateVarsSparse = StateVars;
@@ -205,14 +205,15 @@ InputStruct.StatusDisplayInterval = int32(2000);
 max(abs(StateVarsDetailed.V(:,8000) - StateVarsSparse.V(:,5)))
 
 %% Spike Plots Generation
-OutputOptions = {'SpikeList', 'Initial'};
+OutputOptions = {'SpikeList', 'Final'};
 % Clearing InputStruct
 clear InputStruct;
 
 % Getting Midway state
 InputStruct = InputStateSparse;
+% InputStruct.InitialState = FinalStateSparse;
 
-InputStruct.NoOfms                = int32(2*60*1000);
+InputStruct.NoOfms                = int32(250*1000);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval = int32(2000);
@@ -220,6 +221,10 @@ InputStruct.StatusDisplayInterval = int32(2000);
 InputStruct.ST_STDP_MaxRelativeInc = single(2.5);
 InputStruct.Iext.IExtAmplitude = single(30);
 InputStruct.Iext.AvgRandSpikeFreq = single(0.3);
+InputStruct.Iext.MajorTimePeriod = uint32(15000);
+InputStruct.Iext.MajorOnTime     = uint32(1000);
+InputStruct.Iext.MinorTimePeriod = uint32(100);
+InputStruct.Iext.NoOfNeurons     = uint32(60);
 
 InputStruct.OutputFile = 'SimResults1000DebugSpikeListfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');
@@ -228,4 +233,9 @@ save('../Data/InputData.mat', 'InputStruct');
 clear functions;
 
 %% Plotting SpikeList
-PlotSpikeList(75, 90, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
+BegTime = (5*60 + 0)*60 + 240;
+EndTime = (5*60 + 0)*60 + 250;
+
+figure;
+[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
+plot(GenerationTimeVect - BegTime*1000*double(InputStruct.onemsbyTstep), double(InputStruct.NStart(SpikeSynIndVect)), '.', 'MarkerSize', 1);
