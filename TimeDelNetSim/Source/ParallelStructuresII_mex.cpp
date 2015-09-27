@@ -7,12 +7,16 @@
 #include <chrono>
 #include <cmath>
 
-#include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\Headers\Network.hpp"
 #include "..\Headers\NeuronSim.hpp"
-#include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
+
+#include "..\Headers\IExtHeaders\IExtCode.hpp"
+
+#include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
+
+#include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
 #include <emmintrin.h>
 #include <smmintrin.h>
 
@@ -230,56 +234,46 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 	auto Tbeg = IntVars.Time;
 	auto nSteps = onemsbyTstep * NoOfms;
 	auto OutputControl = IntVars.OutputControl;
-	auto beta = IntVars.beta;
 	auto N = IntVars.N;
 	auto M = IntVars.M;
 	auto DelayRange = IntVars.DelayRange;
 
-	size_t TimeDimLen;  // beta is the time offset from Tbeg which 
-	// corresponds to the first valid storage location
-	if (StorageStepSize){
-		TimeDimLen = (nSteps >= beta)?(nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1 : 0;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
-	}
-	else{
-		TimeDimLen = nSteps;
-	}
 	if (OutputControl & OutOps::WEIGHT_REQ)
 		if (!(IntVars.InterestingSyns.size()))
-			this->WeightOut = MexMatrix<float>(TimeDimLen, M);
+			this->WeightOut = MexMatrix<float>(0, M);
 
 	if (OutputControl & OutOps::V_REQ)
-		this->VOut = MexMatrix<float>(TimeDimLen, N);
+		this->VOut = MexMatrix<float>(0, N);
 
 	if (OutputControl & OutOps::U_REQ)
-		this->UOut = MexMatrix<float>(TimeDimLen, N);
+		this->UOut = MexMatrix<float>(0, N);
 
 	if (OutputControl & OutOps::I_IN_REQ)
-		this->IinOut = MexMatrix<float>(TimeDimLen, N);
+		this->IinOut = MexMatrix<float>(0, N);
 
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ)
-		this->WeightDerivOut = MexMatrix<float>(TimeDimLen, M);
+		this->WeightDerivOut = MexMatrix<float>(0, M);
 	
 	// Initializing Output State variables for Short Term STDP
 	if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
-		this->ST_STDP_RelativeIncOut = MexMatrix<float>(TimeDimLen, M);
+		this->ST_STDP_RelativeIncOut = MexMatrix<float>(0, M);
 
 	// Initializing Output State variables for IExt variables
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 
-	this->TimeOut = MexVector<int>(TimeDimLen);
+	this->TimeOut = MexVector<int>(0);
 
 	if (OutputControl & OutOps::LASTSPIKED_NEU_REQ)
-		this->LSTNeuronOut = MexMatrix<int>(TimeDimLen, N);
+		this->LSTNeuronOut = MexMatrix<int>(0, N);
 
 	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
-		this->LSTSynOut = MexMatrix<int>(TimeDimLen, M);
+		this->LSTSynOut = MexMatrix<int>(0, M);
 
 	if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
-		this->SpikeQueueOut = MexVector<MexVector<MexVector<int> > >(TimeDimLen,
-			MexVector<MexVector<int> >(onemsbyTstep * DelayRange, MexVector<int>()));
+		this->SpikeQueueOut = MexVector<MexVector<MexVector<int> > >(0);
 
 	if (OutputControl & OutOps::CURRENT_QINDS_REQ)
-		this->CurrentQIndexOut = MexVector<int>(TimeDimLen);
+		this->CurrentQIndexOut = MexVector<int>(0);
 }
 void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	size_t TimeDimLen;
@@ -290,20 +284,12 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	auto Tbeg = IntVars.Time;
 	auto nSteps = onemsbyTstep * NoOfms;
 	auto OutputControl = IntVars.OutputControl;
-	auto beta = IntVars.beta;
 
-	if (IntVars.StorageStepSize){
-		TimeDimLen = (nSteps >= beta) ? (nSteps - beta) / (StorageStepSize*onemsbyTstep) + 1 : 0;	//No. of times (StorageStepSize * onemsbyTstep)|time happens
-	}
-	else{
-		TimeDimLen = nSteps;
-	}
-	
 	if (OutputControl & OutOps::WEIGHT_REQ)
 		if (IntVars.InterestingSyns.size())
-			this->WeightOut = MexMatrix<float>(TimeDimLen, IntVars.InterestingSyns.size());
+			this->WeightOut = MexMatrix<float>(0, IntVars.InterestingSyns.size());
 	if (OutputControl & OutOps::I_TOT_REQ)
-		this->Itot = MexMatrix<float>(TimeDimLen, N);
+		this->Itot = MexMatrix<float>(0, N);
 
 	// Initializing Output Variables for IextInterface
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
@@ -332,152 +318,89 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->CurrentQIndex = -1;
 	this->Time = -1;
 }
+void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars) {
 
-void InternalVars::DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
-
-	size_t CurrentInsertPos = (i - beta) / (onemsbyTstep * StorageStepSize);
-	size_t QueueSize = onemsbyTstep * DelayRange;
-	// Storing U,V,Iin
-	if (OutputControl & OutOps::V_REQ)
-		StateOut.VOut[CurrentInsertPos] = V;
-	if (OutputControl & OutOps::U_REQ)
-		StateOut.UOut[CurrentInsertPos] = U;
-	if (OutputControl & OutOps::I_IN_REQ)
-		for (int j = 0; j < N; ++j)
-			StateOut.IinOut(CurrentInsertPos, j) = (float)Iin[j] / (1i64 << 32);
-
-	//Storing Weight Derivative
-	if (OutputControl & OutOps::WEIGHT_DERIV_REQ){
-		StateOut.WeightDerivOut[CurrentInsertPos] = WeightDeriv;
-	}
-
-	// Storing IextInterface related state / output vars
-	IExtInterface::doSparseOutput(
-		StateOut.IextInterface,
-		OutVars.IextInterface,
-		this->IextInterface,
-		*this
-	);
-
-	// Storing Current Time Instant
-	StateOut.TimeOut[CurrentInsertPos] = Time;
-
-	// Storing Weights
-	if (OutputControl & OutOps::WEIGHT_REQ && InterestingSyns.size()){
-		size_t tempSize = InterestingSyns.size();
-		for (int j = 0; j < tempSize; ++j)
-			OutVars.WeightOut(CurrentInsertPos, j) = Network[InterestingSyns[j]].Weight;
-	}
-	else if (OutputControl & OutOps::WEIGHT_REQ){
-		for (int j = 0; j < M; ++j)
-			StateOut.WeightOut(CurrentInsertPos, j) = Network[j].Weight;
-	}
-
-	// Storing Spike Queue related state informations
-	if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
-		for (int j = 0; j < QueueSize; ++j)
-			StateOut.SpikeQueueOut[CurrentInsertPos][j] = SpikeQueue[j];
-	if (OutputControl & OutOps::CURRENT_QINDS_REQ)
-		StateOut.CurrentQIndexOut[CurrentInsertPos] = CurrentQIndex;
-
-	// Storing last Spiked timings
-	if (OutputControl & OutOps::LASTSPIKED_NEU_REQ)
-		StateOut.LSTNeuronOut[CurrentInsertPos] = LSTNeuron;
-	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
-		StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
-
-	// Storing Short Term STDP State Variables
-	if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
-		StateOut.ST_STDP_RelativeIncOut[CurrentInsertPos] = ST_STDP_RelativeInc;
-
-	// Storing Itot
-	if (OutputControl & OutOps::I_TOT_REQ){
-		for (int j = 0; j < N; ++j)
-			OutVars.Itot(CurrentInsertPos, j) = IextInterface.Iext[j] + (float)(Iin[j]) / (1i64 << 32);
-	}
-}
-void InternalVars::DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
-	if (!StorageStepSize){
-		size_t nSteps = onemsbyTstep*NoOfms;
-		size_t CurrentInsertPos = i - 1;
-		size_t QueueSize = onemsbyTstep * DelayRange;
-
-		// Storing U,V,IinOut and Time
+	if (StorageStepSize && (Time % (StorageStepSize*onemsbyTstep) == 0) || !StorageStepSize) {
+		
+		// Storing U,V,Iin and Time
 		if (OutputControl & OutOps::V_REQ)
-			StateOut.VOut[CurrentInsertPos] = V;
+			StateOut.VOut.push_row(V);
 		if (OutputControl & OutOps::U_REQ)
-			StateOut.UOut[CurrentInsertPos] = U;
-		if (OutputControl & OutOps::I_IN_REQ)
+			StateOut.UOut.push_row(U);
+		if (OutputControl & OutOps::I_IN_REQ) {
+			StateOut.IinOut.push_row_size(1);
 			for (int j = 0; j < N; ++j)
-				StateOut.IinOut(CurrentInsertPos, j) = (float)Iin[j] / (1i64 << 32);
+				StateOut.IinOut.lastRow()[j] = (float)Iin[j] / (1i64 << 32);
+		}
 
 		//Storing Weight Derivative
-		if (OutputControl & OutOps::WEIGHT_DERIV_REQ){
-			StateOut.WeightDerivOut[CurrentInsertPos] = WeightDeriv;
+		if (OutputControl & OutOps::WEIGHT_DERIV_REQ) {
+			StateOut.WeightDerivOut.push_row(WeightDeriv);
 		}
 
 		// Storing IextInterface related state / output vars
-		IExtInterface::doFullOutput(
+		IExtInterface::doOutput(
 			StateOut.IextInterface,
 			OutVars.IextInterface,
 			this->IextInterface,
 			*this
 			);
 
-		// Storing current time instant
-		StateOut.TimeOut[CurrentInsertPos] = Time;
+		// Storing Current Time Instant
+		StateOut.TimeOut.push_back(Time);
 
 		// Storing Weights
-		if (OutputControl & OutOps::WEIGHT_REQ && InterestingSyns.size()){
-			size_t tempSize = InterestingSyns.size();
-			for (int j = 0; j < tempSize; ++j)
-				OutVars.WeightOut(CurrentInsertPos, j) = Network[InterestingSyns[j]].Weight;
+		if (OutputControl & OutOps::WEIGHT_REQ && InterestingSyns.size()) {
+			OutVars.WeightOut.push_row_size(1);
+			for (int j = 0; j < InterestingSyns.size(); ++j)
+				OutVars.WeightOut.lastRow()[j] = Network[InterestingSyns[j]].Weight;
 		}
-		else if (OutputControl & OutOps::WEIGHT_REQ){
+		else if (OutputControl & OutOps::WEIGHT_REQ) {
+			StateOut.WeightOut.push_row_size(1);
 			for (int j = 0; j < M; ++j)
-				StateOut.WeightOut(CurrentInsertPos, j) = Network[j].Weight;
+				StateOut.WeightOut.lastRow()[j] = Network[j].Weight;
 		}
 
 		// Storing Spike Queue related state informations
 		if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
-			for (int j = 0; j < QueueSize; ++j)
-				StateOut.SpikeQueueOut[CurrentInsertPos][j] = SpikeQueue[j];
+			StateOut.SpikeQueueOut.push_back(SpikeQueue);
 		if (OutputControl & OutOps::CURRENT_QINDS_REQ)
-			StateOut.CurrentQIndexOut[CurrentInsertPos] = CurrentQIndex;
+			StateOut.CurrentQIndexOut.push_back(CurrentQIndex);
 
 		// Storing last Spiked timings
 		if (OutputControl & OutOps::LASTSPIKED_NEU_REQ)
-			StateOut.LSTNeuronOut[CurrentInsertPos] = LSTNeuron;
+			StateOut.LSTNeuronOut.push_row(LSTNeuron);
 		if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
-			StateOut.LSTSynOut[CurrentInsertPos] = LSTSyn;
+			StateOut.LSTSynOut.push_row(LSTSyn);
 
 		// Storing Short Term STDP State Variables
 		if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
-			StateOut.ST_STDP_RelativeIncOut[CurrentInsertPos] = ST_STDP_RelativeInc;
+			StateOut.ST_STDP_RelativeIncOut.push_row(ST_STDP_RelativeInc);
 
 		// Storing Itot
-		if (OutputControl & OutOps::I_TOT_REQ){
+		if (OutputControl & OutOps::I_TOT_REQ) {
+			OutVars.Itot.push_row_size(1);
 			for (int j = 0; j < N; ++j)
-				OutVars.Itot(CurrentInsertPos, j) = IextInterface.Iext[j] + (float)(Iin[j]) / (1i64 << 32);
+				OutVars.Itot.lastRow()[j] = IextInterface.Iext[j] + (float)(Iin[j]) / (1i64 << 32);
 		}
+	}
 
-		// Storing Spike List
-		if (OutputControl & OutOps::SPIKE_LIST_REQ){
-			OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
-			for (auto Spike : SpikeQueue[CurrentQIndex]){
-				OutVars.SpikeList.SpikeSynInds.push_back(Spike);
-			}
-			if (i == nSteps){
-				// Storing spikes which are generated but not gonna arrive next turn
-				for (int j = 1; j < DelayRange*onemsbyTstep; ++j){
-					OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
-					for (auto Spike : SpikeQueue[(CurrentQIndex+j)%(onemsbyTstep*DelayRange)]){
-						OutVars.SpikeList.SpikeSynInds.push_back(Spike);
-					}
-				}
+	// Storing Spike List (Only if StorageStepSize == 0
+	if (!StorageStepSize && OutputControl & OutOps::SPIKE_LIST_REQ) {
+		OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
+		for (auto Spike : SpikeQueue[CurrentQIndex]) {
+			OutVars.SpikeList.SpikeSynInds.push_back(Spike);
+		}
+		if (i == onemsbyTstep*NoOfms) {
+			// Storing spikes which are generated but not gonna arrive next turn
+			for (int j = 1; j < DelayRange*onemsbyTstep; ++j) {
 				OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
-				// Final push_back in order to be able to infer end.
+				for (auto Spike : SpikeQueue[(CurrentQIndex + j) % (onemsbyTstep*DelayRange)]) {
+					OutVars.SpikeList.SpikeSynInds.push_back(Spike);
+				}
 			}
+			OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
+			// Final push_back in order to be able to infer end.
 		}
 	}
 }

@@ -184,9 +184,6 @@ struct InternalVars{
 	size_t i;       //This is the most important loop index that is definitely a state variable
 	                // and plays a crucial role in deciding the index into which the output must be performed
 	size_t Time;    // must be initialized befor beta
-	size_t beta;    // This is another parameter that plays a rucial role when storing sparsely.
-	                // It is the first value of i for which the sparse storage must be done.
-	                // goes from 1 to StorageStepSize * onemsbyTstep
 	
 	// Compulsory Simulation Parameters
 	size_t onemsbyTstep;
@@ -271,7 +268,6 @@ struct InternalVars{
 		MExc                  (0),
 		i                     (0),
 		Time                  (IArgs.InitialState.Time),
-		// beta defined conditionally below
 		CurrentQIndex         (IArgs.InitialState.CurrentQIndex),
 		OutputControl         (IArgs.OutputControl),
 		OutputControlString   (IArgs.OutputControlString),
@@ -332,12 +328,6 @@ struct InternalVars{
 		MexTransform(IArgs.b.begin(), IArgs.b.end(), Neurons.begin(), FFL([](Neuron &Neu, float &b)->void{Neu.b = b; }));
 		MexTransform(IArgs.c.begin(), IArgs.c.end(), Neurons.begin(), FFL([](Neuron &Neu, float &c)->void{Neu.c = c; }));
 		MexTransform(IArgs.d.begin(), IArgs.d.end(), Neurons.begin(), FFL([](Neuron &Neu, float &d)->void{Neu.d = d; }));
-
-		// Setting value of beta
-		if (StorageStepSize)
-			beta = (onemsbyTstep * StorageStepSize) - Time % (onemsbyTstep * StorageStepSize);
-		else
-			beta = 0;
 
 		// Setting Initial Conditions of V and U
 		if (U.istrulyempty()){
@@ -427,17 +417,9 @@ struct InternalVars{
 			return;
 		}
 	}
-	void DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars){
-		DoFullOutput(StateOut, OutVars);
-		if (StorageStepSize && !(Time % (StorageStepSize*onemsbyTstep))){
-			DoSparseOutput(StateOut, OutVars);
-		}
-	}
+	void DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars);
 	void DoSingleStateOutput(SingleStateStruct &FinalStateOut);
 	void DoInputStateOutput(InputArgs &InputStateOut);
-private:
-	void DoSparseOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars);
-	void DoFullOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutVars);
 };
 
 struct OutputVarsStruct{
