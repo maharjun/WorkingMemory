@@ -122,7 +122,7 @@ clear OutputVars StateVars InputState FinalState;
 
 %%
 % Loading and renaming variables for sparse simulation
-load('../Data/SimResults1000Sparse5Hours_2.mat');
+load('../Data/SimResults1000DebugSparseLong.mat');
 clear OutputVarsSparse StateVarsSparse InputStateSparse FinalStateSparse;
 OutputVarsSparse = OutputVars;
 StateVarsSparse = StateVars;
@@ -204,14 +204,46 @@ InputStruct.StatusDisplayInterval = int32(2000);
 %% Performing Relevant Tests
 max(abs(StateVarsDetailed.V(:,8000) - StateVarsSparse.V(:,5)))
 
+%% Generating 5 Hours File.
+
+% % The following code is commented out for safety of existing file
+% InputStruct = InputStateSparse;
+% 
+% InputStruct.NoOfms                           = int32(5*60*60*1000);
+% InputStruct.StorageStepSize                  = int32(60*1000);
+% InputStruct.StatusDisplayInterval            = int32(4000);
+% 
+% InputStruct.MaxSynWeight                     = single(8);
+% InputStateSparse.ST_STDP_EffectMaxCausal     = single(0.0);
+% InputStateSparse.ST_STDP_EffectMaxAntiCausal = single(0.0);
+% InputStruct.Iext.IExtAmplitude               = single(0);
+% InputStruct.Iext.AvgRandSpikeFreq            = single(1);
+% 
+% InputStruct.OutputFile = 'SimResults1000Sparse5Hours.mat';
+% 
+% % Run Program
+% cd ..
+% ! "..\x64\Release_Exe\TimeDelNetSim.exe"
+% cd MatlabSource
+
+%% Loading 5 Hours Long Long Term STDP Simulation Result
+load('../Data/SimResults1000Sparse5Hours.mat');
+clear OutputVarsSparse StateVarsSparse InputStateSparse FinalStateSparse;
+OutputVarsSparse = OutputVars;
+StateVarsSparse = StateVars;
+InputStateSparse = InputState;
+FinalStateSparse = FinalState;
+clear OutputVars StateVars InputState FinalState;
+
 %% Spike Plots Generation
 OutputOptions = {'SpikeList', 'Final'};
+
 % Clearing InputStruct
 clear InputStruct;
 
 % Getting Midway state
 InputStruct = InputStateSparse;
-% InputStruct.InitialState = FinalStateSparse;
+InputStruct.InitialState = FinalStateSparse;
 
 InputStruct.NoOfms                = int32(250*1000);
 InputStruct.StorageStepSize       = int32(0);
@@ -226,7 +258,7 @@ InputStruct.Iext.MajorOnTime     = uint32(1000);
 InputStruct.Iext.MinorTimePeriod = uint32(100);
 InputStruct.Iext.NoOfNeurons     = uint32(60);
 
-InputStruct.OutputFile = 'SimResults1000DebugSpikeListfromInit.mat';
+InputStruct.OutputFile = 'SimResults1000DebugSpikeListfrom5Hours.mat';
 save('../Data/InputData.mat', 'InputStruct');
 
 [OutputVarsSpikeList, StateVarsSpikeList, FinalStateSpikeList, InputStateSpikeList] = TimeDelNetSim(InputStruct);
