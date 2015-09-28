@@ -33,13 +33,13 @@
     <ClCompile Include="Source\ParallelStructuresII_mex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\MexMemoryInterfacing\Headers\MexMem.cpp">
+    <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\MexMem.cpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClCompile>
     <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp">
       <Filter>Header Files\IExtHeaders</Filter>
     </ClCompile>
-    <ClCompile Include="..\MexMemoryInterfacing\Headers\InterruptHandling.cpp">
+    <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.cpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClCompile>
   </ItemGroup>
@@ -50,22 +50,22 @@
     <ClInclude Include="Headers\NeuronSim.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\MexMem.hpp">
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\MexMem.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
-    <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp">
+    <ClInclude Include="..\$(ExtLibDirs)\RandomNumGen\Headers\FiltRandomTBB.hpp">
       <Filter>Header Files\RandomNumGen</Filter>
     </ClInclude>
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp">
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\GenericMexIO.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp">
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\LambdaToFunction.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
     <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp">
       <Filter>Header Files\IExtHeaders</Filter>
     </ClInclude>
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\InterruptHandling.hpp">
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
   </ItemGroup>
