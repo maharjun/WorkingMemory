@@ -39,6 +39,9 @@
     <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp">
       <Filter>Header Files\IExtHeaders</Filter>
     </ClCompile>
+    <ClCompile Include="..\MexMemoryInterfacing\Headers\InterruptHandling.cpp">
+      <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Network.hpp">
@@ -61,6 +64,9 @@
     </ClInclude>
     <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp">
       <Filter>Header Files\IExtHeaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\InterruptHandling.hpp">
+      <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

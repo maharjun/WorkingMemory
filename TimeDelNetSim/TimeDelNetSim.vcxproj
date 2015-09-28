@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\MexMemoryInterfacing\Headers\InterruptHandling.cpp" />
     <ClCompile Include="..\MexMemoryInterfacing\Headers\MexMem.cpp" />
     <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp" />
     <ClCompile Include="Source\MexFunctionInterface.cpp">
@@ -144,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp" />
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\InterruptHandling.hpp" />
     <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp" />
     <ClInclude Include="..\MexMemoryInterfacing\Headers\MexMem.hpp" />
     <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp" />
