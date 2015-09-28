@@ -80,6 +80,17 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_Exe|x64'">
     <LibraryPath>$(INTEL_TBB_ROOT)\build\vs2010\intel64\Release-MT;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(AsSubProgram)'!='true'">
+    <ExtLibDirs>.</ExtLibDirs>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(AsSubProgram)'=='true'">
+    <ExtLibDirs>..</ExtLibDirs>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(AsSubProgram)'=='true'">
+    <ClCompile>
+      <PreprocessorDefinitions>TIME_DEL_NET_SIM_AS_SUB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Lib|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -107,12 +118,18 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+	  <PreprocessorDefinitions>MEX_MEMORY_INTERFACING_AS_SUB;RANDOM_NUM_GEN_AS_SUB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+	</ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_Exe|x64'">
     <ClCompile>
@@ -130,8 +147,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\MexMemoryInterfacing\Headers\InterruptHandling.cpp" />
-    <ClCompile Include="..\MexMemoryInterfacing\Headers\MexMem.cpp" />
+    <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.cpp" />
+    <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\MexMem.cpp" />
     <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp" />
     <ClCompile Include="Source\MexFunctionInterface.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Exe|x64'">true</ExcludedFromBuild>
@@ -144,11 +161,11 @@
     <ClCompile Include="Source\ParallelStructuresII_mex.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\GenericMexIO.hpp" />
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\InterruptHandling.hpp" />
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp" />
-    <ClInclude Include="..\MexMemoryInterfacing\Headers\MexMem.hpp" />
-    <ClInclude Include="..\RandomNumGen\Headers\FiltRandomTBB.hpp" />
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\GenericMexIO.hpp" />
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.hpp" />
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\LambdaToFunction.hpp" />
+    <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\MexMem.hpp" />
+    <ClInclude Include="..\$(ExtLibDirs)\RandomNumGen\Headers\FiltRandomTBB.hpp" />
     <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp" />
     <ClInclude Include="Headers\Network.hpp" />
     <ClInclude Include="Headers\NeuronSim.hpp" />
