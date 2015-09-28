@@ -14,6 +14,7 @@
 
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
+#include "..\..\MexMemoryInterfacing\Headers\InterruptHandling.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
 
 using namespace std;
@@ -491,13 +492,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 	// Running Simulation Function.
 	chrono::system_clock::time_point TStart = chrono::system_clock::now();
 	try{
-		
+		EnableInterruptHandling();
 		SimulateParallel(
 			move(InputArgList),
 			PureOutput,
 			StateVarsOutput,
 			FinalStateOutput,
 			InputStateOutput);
+		DisableInterruptHandling();
 	}
 	catch(ExOps::ExCodes A){
 		if (A == ExOps::EXCEPTION_MEM_FULL){

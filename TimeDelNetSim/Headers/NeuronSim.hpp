@@ -177,6 +177,13 @@ struct InputArgs{
 };
 
 struct InternalVars{
+
+	// Compulsory Simulation Parameters
+	size_t onemsbyTstep;
+	size_t NoOfms;
+	size_t DelayRange;
+	
+	// Other Constants
 	size_t N;
 	size_t NExc;
 	size_t M;
@@ -184,12 +191,8 @@ struct InternalVars{
 	size_t i;       //This is the most important loop index that is definitely a state variable
 	                // and plays a crucial role in deciding the index into which the output must be performed
 	size_t Time;    // must be initialized befor beta
-	
-	// Compulsory Simulation Parameters
-	size_t onemsbyTstep;
-	size_t NoOfms;
-	size_t DelayRange;
-	
+	size_t nSteps;  // Included because, it is changed from its default value in case of abortion
+
 	// Optional Simulation Parameters
 	MexVector<char> OutputControlString;
 	size_t OutputControl;
@@ -268,6 +271,7 @@ struct InternalVars{
 		MExc                  (0),
 		i                     (0),
 		Time                  (IArgs.InitialState.Time),
+		nSteps                (onemsbyTstep*NoOfms),
 		CurrentQIndex         (IArgs.InitialState.CurrentQIndex),
 		OutputControl         (IArgs.OutputControl),
 		OutputControlString   (IArgs.OutputControlString),

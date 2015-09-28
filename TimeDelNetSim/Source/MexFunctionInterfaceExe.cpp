@@ -38,7 +38,7 @@ int main(){
 
 	matClose(InputFilePtr);
 	if (Input == nullptr){
-		cout << "TimeDelNetSimEXE:InvInpVarName", "The variable name in the mex file InputData must be InputStruct";
+		WriteException(ExOps::EXCEPTION_INVALID_INPUT, "The variable name in the mex file InputData must be InputStruct");
 	}
 	
 	mxArrayPtr lhs[4] = { nullptr, nullptr, nullptr, nullptr }, 
@@ -48,7 +48,7 @@ int main(){
 	OutputFilePtr = matOpen(OutputFilePath, "r");
 	while (OutputFilePtr){
 		char UserConfirmResp;
-		std::cout << "File Exists. Sure about rewrite? : ";
+		std::cout << "File Exists. Sure about rewrite? : " << std::flush;
 		std::cin >> UserConfirmResp;
 		if ((UserConfirmResp | 32) == 'y'){
 			matClose(OutputFilePtr);

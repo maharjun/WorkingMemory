@@ -14,6 +14,7 @@
 
 #include "..\..\MexMemoryInterfacing\Headers\MexMem.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\GenericMexIO.hpp"
+#include "..\..\MexMemoryInterfacing\Headers\InterruptHandling.hpp"
 #include "..\..\MexMemoryInterfacing\Headers\LambdaToFunction.hpp"
 
 #include "..\..\RandomNumGen\Headers\FiltRandomTBB.hpp"
@@ -232,7 +233,7 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 	auto NoOfms = IntVars.NoOfms;
 	auto StorageStepSize = IntVars.StorageStepSize;
 	auto Tbeg = IntVars.Time;
-	auto nSteps = onemsbyTstep * NoOfms;
+	auto nSteps = IntVars.nSteps;
 	auto OutputControl = IntVars.OutputControl;
 	auto N = IntVars.N;
 	auto M = IntVars.M;
@@ -282,7 +283,7 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	auto NoOfms = IntVars.NoOfms;
 	auto StorageStepSize = IntVars.StorageStepSize;
 	auto Tbeg = IntVars.Time;
-	auto nSteps = onemsbyTstep * NoOfms;
+	auto nSteps = IntVars.nSteps;
 	auto OutputControl = IntVars.OutputControl;
 
 	if (OutputControl & OutOps::WEIGHT_REQ)
@@ -391,7 +392,7 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 		for (auto Spike : SpikeQueue[CurrentQIndex]) {
 			OutVars.SpikeList.SpikeSynInds.push_back(Spike);
 		}
-		if (i == onemsbyTstep*NoOfms) {
+		if (i == nSteps) {
 			// Storing spikes which are generated but not gonna arrive next turn
 			for (int j = 1; j < DelayRange*onemsbyTstep; ++j) {
 				OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
@@ -634,6 +635,7 @@ void SimulateParallel(
 	size_t &i                   = IntVars.i;
 	size_t &NExc                = IntVars.NExc;
 	size_t &MExc                = IntVars.MExc;
+	size_t &nSteps              = IntVars.nSteps;
 
 	const float &I0			= IntVars.I0;	// Value of the current factor to be multd with weights (constant)
 	// calculate value of alpha for filtering
@@ -649,9 +651,7 @@ void SimulateParallel(
 	// CurrentDecayFactor
 
 	size_t QueueSize = SpikeQueue.size();
-	size_t nSteps = NoOfms*onemsbyTstep;
 	size_t N = IntVars.Neurons.size(), M = IntVars.Network.size();
-
 	
 	// VARIOuS ARRAYS USED apart from those in the argument list and Output List.
 	// Id like to call them intermediate arrays, required for simulation but are
@@ -673,8 +673,6 @@ void SimulateParallel(
 	//----------------------------------------------------------------------------------------------//
 	//--------------------------------- Initializing output Arrays ---------------------------------//
 	//----------------------------------------------------------------------------------------------//
-
-	
 
 	StateVarsOutput.initialize(IntVars);
 	PureOutputs.initialize(IntVars);
@@ -793,19 +791,7 @@ void SimulateParallel(
 			CurrentAttenuate(IntVars));
 
 		size_t QueueSubEnd = SpikeQueue[CurrentQueueIndex].size();
-		maxSpikeno += QueueSubEnd;
-		// Epilepsy Check
-		if (QueueSubEnd > (2*M) / (5)){
-			epilepsyctr++;
-			if (epilepsyctr > 100){
-			#ifdef MEX_LIB
-				mexErrMsgTxt("Epileptic shit");
-			#elif defined MEX_EXE
-				WriteOutput("Epilepsy Nyuh!!\n");
-			#endif
-				return;
-			}
-		}
+
 		IUpdateTimeBeg = std::chrono::system_clock::now();
 		// This iter calculates Itemp as in above diagram
 		if (SpikeQueue[CurrentQueueIndex].size() != 0)
@@ -837,6 +823,24 @@ void SimulateParallel(
 				Network[j].Weight = (Network[j].Weight < IntVars.MaxSynWeight) ? Network[j].Weight : IntVars.MaxSynWeight;
 				WeightDeriv[j] *= 0.9f;
 			}
+		}
+
+		maxSpikeno += QueueSubEnd; // Added the number of spikes that arrived in the current time instant
+		
+		// Epilepsy Check
+		if (QueueSubEnd > (2*M) / (5)){
+			epilepsyctr++;
+			if (epilepsyctr > 100){
+				nSteps = i; // Make The current Iteration the last loop iteration
+				WriteOutput("Epilepsy Nyuh!! Simulation Terminated at the end of time T = %d steps\n", time);
+			}
+		}
+
+		// Check for Ctrl-C Interrupt
+		if (IsProgramInterrupted()) {
+			nSteps = i;   // Make The current Iteration the last loop iteration
+			WriteOutput("Simulation Aborted at the end of time T = %d steps\n", time);
+			ResetInterrupt();
 		}
 
 		OutputTimeBeg = std::chrono::system_clock::now();
