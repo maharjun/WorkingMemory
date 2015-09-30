@@ -60,7 +60,7 @@ int main(){
 	OutputFilePtr = matOpen(OutputFilePath, "r");
 	while (OutputFilePtr){
 		char UserConfirmResp;
-		std::cout << "File Exists. Sure about rewrite? : " << std::flush;
+		std::cout << "The following file already exists - \n" << std::endl << "    " << OutFileName << std::endl << "\nSure about rewrite? : " << std::flush;
 		std::cin >> UserConfirmResp;
 		if ((UserConfirmResp | 32) == 'y'){
 			matClose(OutputFilePtr);
