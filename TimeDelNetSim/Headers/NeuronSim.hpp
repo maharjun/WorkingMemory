@@ -204,6 +204,7 @@ struct InternalVars{
 	                // and plays a crucial role in deciding the index into which the output must be performed
 	size_t Time;    // must be initialized befor beta
 	size_t nSteps;  // Included because, it is changed from its default value in case of abortion
+	uint64_t NoOfSpikes;
 
 	// Optional Simulation Parameters
 	MexVector<char> OutputControlString;
@@ -284,6 +285,7 @@ struct InternalVars{
 		i                     (0),
 		Time                  (IArgs.InitialState.Time),
 		nSteps                (onemsbyTstep*NoOfms),
+		NoOfSpikes            (0),
 		CurrentQIndex         (IArgs.InitialState.CurrentQIndex),
 		OutputControl         (IArgs.OutputControl),
 		OutputControlString   (IArgs.OutputControlString),
@@ -441,6 +443,7 @@ struct InternalVars{
 struct OutputVarsStruct{
 	MexMatrix<float> WeightOut;
 	MexMatrix<float> Itot;
+	MexVector<uint64_t> NoOfSpikes;
 
 	IExtInterface::OutputVarsStruct IextInterface;
 
@@ -453,7 +456,9 @@ struct OutputVarsStruct{
 	OutputVarsStruct() :
 		WeightOut(),
 		Itot(),
-		SpikeList() {}
+		NoOfSpikes(),
+		IextInterface(),
+		SpikeList(){}
 
 	void initialize(const InternalVars &);
 };
