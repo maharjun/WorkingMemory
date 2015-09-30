@@ -103,7 +103,7 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 		// Performing Synaptic Current Injection Using CurrRelativeInc and Weight of synapse
 		__m128 AddedCurrent;
 		AddedCurrent.m128_u64[0] = 0; AddedCurrent.m128_u64[1] = 0;
-		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight*(1 + CurrRelativeInc);
+		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight*((1 + CurrRelativeInc > 0)? 1 + CurrRelativeInc:0);
 		AddedCurrent.m128_u32[0] += (32 << 23);
 
 		Iin[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
@@ -113,7 +113,7 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 		if (CurrLSTNeuron >= 0){
 			size_t SpikeTimeDiffCurr = time - CurrLSTNeuron - 1;
 			ST_STDP_RelativeInc[CurrentSynapseInd] -= ST_STDP_EffectMaxAntiCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
-			ST_STDP_RelativeInc[CurrentSynapseInd] = (ST_STDP_RelativeInc[CurrentSynapseInd] < 0) ? 0 : ST_STDP_RelativeInc[CurrentSynapseInd];
+			// ST_STDP_RelativeInc[CurrentSynapseInd] = (ST_STDP_RelativeInc[CurrentSynapseInd] < 0) ? 0 : ST_STDP_RelativeInc[CurrentSynapseInd];
 			WeightDeriv[CurrentSynapseInd] -= ((SpikeTimeDiffCurr < STDPMaxWinLen) ? 1.2f*ExpVect[SpikeTimeDiffCurr] : 0);
 		}
 
@@ -829,10 +829,10 @@ void SimulateParallel(
 
 		if (!(time % (1000 * onemsbyTstep))){
 			for (int j = 0; j < MExc; ++j){
-				Network[j].Weight += WeightDeriv[j] + 0.01f;
+				Network[j].Weight += WeightDeriv[j];
 				Network[j].Weight = (Network[j].Weight > 0) ? Network[j].Weight : 0;
 				Network[j].Weight = (Network[j].Weight < IntVars.MaxSynWeight) ? Network[j].Weight : IntVars.MaxSynWeight;
-				WeightDeriv[j] *= 0.9f;
+				WeightDeriv[j] = 0;
 			}
 		}
 
