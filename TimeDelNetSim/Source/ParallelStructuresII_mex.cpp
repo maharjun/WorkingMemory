@@ -211,6 +211,7 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 		this->Iin = MexMatrix<float>(0, N);
 	if (OutputControl & OutOps::I_TOT_REQ)
 		this->Itot = MexMatrix<float>(0, N);
+	this->NoOfSpikes = MexVector<uint64_t>(0);
 
 	// Initializing Output Variables for IextInterface
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
@@ -312,6 +313,10 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 			for (int j = 0; j < N; ++j)
 				OutVars.Itot.lastRow()[j] = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
 		}
+
+		// Storing NoOfSpikes
+		OutVars.NoOfSpikes.push_back(NoOfSpikes);
+		NoOfSpikes = 0;
 	}
 
 	// Storing Spike List (Only if StorageStepSize == 0
@@ -546,6 +551,7 @@ void SimulateParallel(
 	size_t &OutputControl       = IntVars.OutputControl;
 	size_t &i                   = IntVars.i;
 	size_t &nSteps              = IntVars.nSteps;
+	uint64_t &NoOfSpikes        = IntVars.NoOfSpikes;
 
 	const float &I0			= IntVars.I0;	// Value of the current factor to be multd with weights (constant)
 	// calculate value of alpha for filtering
@@ -719,7 +725,8 @@ void SimulateParallel(
 		CurrentQueueIndex = (CurrentQueueIndex + 1) % QueueSize;
 
 		maxSpikeno += QueueSubEnd; // Added the number of spikes that arrived in the current time instant
-		
+		NoOfSpikes += QueueSubEnd;
+
 		// Epilepsy Check
 		if (QueueSubEnd > (2*M) / (5)){
 			epilepsyctr++;

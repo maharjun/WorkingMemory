@@ -231,6 +231,7 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 		"Iin",
 		"Itot",
 		"Iext",
+		"NoOfSpikes",
 		"SpikeList",
 		nullptr
 	};
@@ -247,6 +248,8 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 	mxSetField(ReturnPointer, 0, "Iin", assignmxArray(Output.Iin, mxSINGLE_CLASS));
 	// Assigning Itot
 	mxSetField(ReturnPointer, 0, "Itot", assignmxArray(Output.Itot, mxSINGLE_CLASS));
+	// Assigning NoOfSpikes
+	mxSetField(ReturnPointer, 0, "NoOfSpikes", assignmxArray(Output.NoOfSpikes, mxUINT64_CLASS));
 	// Assigning Output variables for IExtInterface
 	mxArrayPtr IExtOutVarsStruct = IExtInterface::putOutputVarstoMATLABStruct(Output.IextInterface);
 	mxSetField(ReturnPointer, 0, "Iext", IExtOutVarsStruct);
