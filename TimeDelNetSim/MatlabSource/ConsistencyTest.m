@@ -34,7 +34,7 @@ d(Ninh) = 2;
 
 %% Getting Long Sparse Vector
 
-OutputOptions = {'FSF', 'Initial'};
+OutputOptions = {'SpikeList', 'FSF', 'Initial'};
 % Clearing InputStruct
 clear InputStruct;
 
@@ -209,4 +209,6 @@ save('../Data/InputData.mat', 'InputStruct');
 [OutputVarsSpikeList, StateVarsSpikeList, FinalStateSpikeList, InputStateSpikeList] = TimeDelNetSim(InputStruct);
 
 %% Plotting SpikeList
-PlotSpikeList(18, 20, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
+PlotSpikeList(18, 20, InputStruct, OutputVarsSparse.SpikeList);
+PlotSpikeList(18, 20, InputStruct, OutputVarsSpikeList.SpikeList);
+

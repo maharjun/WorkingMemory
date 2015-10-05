@@ -3,8 +3,8 @@ function [ fig ] = PlotSpikeList( varargin )
 %   
 % There are two ways of calling this function
 % 
-%   1. [ fig ] = PlotSpikeList(BegTime, EndTime, InputStruct, TimeArray, SpikeList)
-%   2. [ fig ] = PlotSpikeList(InputStruct, Time, SpikeList)
+%   1. [ fig ] = PlotSpikeList(BegTime, EndTime, InputStruct, SpikeList)
+%   2. [ fig ] = PlotSpikeList(InputStruct, SpikeList)
 % 
 % Return Variables:
 % 
@@ -25,17 +25,17 @@ function [ fig ] = PlotSpikeList( varargin )
 %   [BegTime, EndTime). If not specified, the entire range of time
 %   specified by TimeArray is taken into consideration.
 
-if nargin == 5 && ~ischar(varargin{4})
+if nargin == 4 && ~ischar(varargin{4})
 	InputStruct = varargin{3};
-	TimeArray   = varargin{4};
-	SpikeList   = varargin{5};
+	SpikeList   = varargin{4};
+	TimeArray   = SpikeList.TimeRchd;
 	
 	BegTime = varargin{1};
 	EndTime = varargin{2};
-elseif nargin == 3
+elseif nargin == 2
 	InputStruct = varargin{1};
-	TimeArray   = varargin{2};
-	SpikeList   = varargin{3};
+	SpikeList   = varargin{2};
+	TimeArray   = SpikeList.TimeRchd;
 	
 	BegTime = 0;
 	EndTime = (TimeArray(end) + 1)/(1000*double(InputStruct.onemsbyTstep));
@@ -55,7 +55,7 @@ else
 	MarkerSize = 1;
 end
 
-[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, TimeArray, SpikeList);
+[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, SpikeList);
 
 SpikePreSynNeuronVect = InputStruct.NStart(SpikeSynIndVect);
 
