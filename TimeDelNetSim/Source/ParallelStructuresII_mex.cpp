@@ -403,7 +403,8 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 	}
 
 	// Storing Spike List (Only if StorageStepSize == 0
-	if (!StorageStepSize && OutputControl & OutOps::SPIKE_LIST_REQ) {
+	if (OutputControl & OutOps::SPIKE_LIST_REQ) {
+		OutVars.SpikeList.TimeRchd         .push_back(Time+1);
 		OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
 		for (auto Spike : SpikeQueue[CurrentQIndex]) {
 			OutVars.SpikeList.SpikeSynInds.push_back(Spike);
@@ -411,6 +412,7 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 		if (i == nSteps) {
 			// Storing spikes which are generated but not gonna arrive next turn
 			for (int j = 1; j < DelayRange*onemsbyTstep; ++j) {
+				OutVars.SpikeList.TimeRchd         .push_back(Time + j + 1);
 				OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
 				for (auto Spike : SpikeQueue[(CurrentQIndex + j) % (onemsbyTstep*DelayRange)]) {
 					OutVars.SpikeList.SpikeSynInds.push_back(Spike);
