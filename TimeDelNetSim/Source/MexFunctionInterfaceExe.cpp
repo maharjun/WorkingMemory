@@ -85,6 +85,9 @@ int main(){
 			printf("Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
 			system("pause");
 		}
+		else {
+			system("pause");
+		}
 		mxDestroyArray(Input);
 		return 0;
 	}
