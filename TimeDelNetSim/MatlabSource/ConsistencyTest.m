@@ -208,7 +208,8 @@ save('../Data/InputData.mat', 'InputStruct');
 
 [OutputVarsSpikeList, StateVarsSpikeList, FinalStateSpikeList, InputStateSpikeList] = TimeDelNetSim(InputStruct);
 
-%% Plotting SpikeList
+%% Plotting SpikeList and testing equivalence between SpikeLists
 PlotSpikeList(18, 20, InputStruct, OutputVarsSparse.SpikeList);
 PlotSpikeList(18, 20, InputStruct, OutputVarsSpikeList.SpikeList);
 
+isequal(OutputVarsSparse.SpikeList, OutputVarsSpikeList.SpikeList)

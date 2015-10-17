@@ -68,5 +68,8 @@
     <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\MexTypeTraits.hpp">
+      <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

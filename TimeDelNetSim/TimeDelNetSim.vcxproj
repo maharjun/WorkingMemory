@@ -128,8 +128,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-	  <PreprocessorDefinitions>MEX_MEMORY_INTERFACING_AS_SUB;RANDOM_NUM_GEN_AS_SUB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-	</ClCompile>
+      <PreprocessorDefinitions>MEX_MEMORY_INTERFACING_AS_SUB;RANDOM_NUM_GEN_AS_SUB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_Exe|x64'">
     <ClCompile>
@@ -166,6 +166,7 @@
     <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\LambdaToFunction.hpp" />
     <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\MexMem.hpp" />
     <ClInclude Include="..\$(ExtLibDirs)\RandomNumGen\Headers\FiltRandomTBB.hpp" />
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\MexTypeTraits.hpp" />
     <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp" />
     <ClInclude Include="Headers\Network.hpp" />
     <ClInclude Include="Headers\NeuronSim.hpp" />
