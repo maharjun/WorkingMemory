@@ -18,6 +18,7 @@
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
+#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
 
 #include <xutility>
@@ -106,7 +107,7 @@ struct SingleStateStruct{
 	// IextInterface state variable component
 	IExtInterface::SingleStateStruct IextInterface;
 
-	MexVector<MexVector<int > > SpikeQueue;
+	FlatVectTree<int> SpikeQueue;
 	MexVector<int> LSTNeuron;
 	MexVector<int> LSTSyn;
 	int Time;
@@ -219,7 +220,7 @@ struct InternalVars{
 	MexVector<float> WeightDeriv;
 	IExtInterface::InternalVarsStruct IextInterface;
 
-	MexVector<MexVector<int> > &SpikeQueue;
+	MexVector<MexVector<int> > SpikeQueue;
 	MexVector<int> &LSTNeuron;
 	MexVector<int> &LSTSyn;
 
@@ -264,7 +265,7 @@ struct InternalVars{
 		Iin2(N),
 		WeightDeriv           (IArgs.InitialState.WeightDeriv),
 		IextInterface         (),
-		SpikeQueue            (IArgs.InitialState.SpikeQueue),
+		SpikeQueue            (),
 		LSTNeuron             (IArgs.InitialState.LSTNeuron),
 		LSTSyn                (IArgs.InitialState.LSTSyn),
 		AuxArray                (M),
@@ -371,11 +372,14 @@ struct InternalVars{
 		);
 		
 		// Setting Initial Conditions of SpikeQueue
-		if (SpikeQueue.istrulyempty()){
+		if (IArgs.InitialState.SpikeQueue.istrulyempty()){
 			SpikeQueue = MexVector<MexVector<int> >(onemsbyTstep * DelayRange, MexVector<int>());
 		}
-		else if (SpikeQueue.size() != onemsbyTstep * DelayRange){
-			// GIVE ERROR MESSAGE HERE
+		else if (IArgs.InitialState.SpikeQueue.depth() == 1 && IArgs.InitialState.SpikeQueue.LevelSize(0) == onemsbyTstep*DelayRange) {
+			IArgs.InitialState.SpikeQueue.getVectTree(SpikeQueue);
+		}
+		else {
+			//GIVE ERROR MESSAGE HERE
 			return;
 		}
 
@@ -434,7 +438,7 @@ struct StateVarsOutStruct{
 	IExtInterface::StateOutStruct IextInterface;
 
 	MexVector<int> TimeOut;
-	MexVector<MexVector<MexVector<int> > > SpikeQueueOut;
+	FlatVectTree<int> SpikeQueueOut;
 	MexVector<int> CurrentQIndexOut;
 	MexMatrix<int> LSTNeuronOut;
 	MexMatrix<int> LSTSynOut;

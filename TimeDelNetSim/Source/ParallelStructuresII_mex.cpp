@@ -26,7 +26,8 @@
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\InterruptHandling.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
-						  
+#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
+
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
 
 #include <emmintrin.h>
@@ -189,7 +190,7 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 		this->LSTSynOut = MexMatrix<int>(0, M);
 
 	if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
-		this->SpikeQueueOut = MexVector<MexVector<MexVector<int> > >(0);
+		this->SpikeQueueOut = FlatVectTree<int>(2);
 
 	if (OutputControl & OutOps::CURRENT_QINDS_REQ)
 		this->CurrentQIndexOut = MexVector<int>(0);
@@ -236,7 +237,7 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->Weight = MexVector<float>(M);
 	this->LSTNeuron = MexVector<int>(N);
 	this->LSTSyn = MexVector<int>(M);
-	this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
+	this->SpikeQueue = FlatVectTree<int>(1);
 	this->CurrentQIndex = -1;
 	this->Time = -1;
 }
@@ -359,9 +360,7 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 		SingleStateOut.Weight[j] = Network[j].Weight;
 	}
 	SingleStateOut.WeightDeriv = WeightDeriv;
-	for (int j = 0; j < QueueSize; ++j){
-		SingleStateOut.SpikeQueue[j] = SpikeQueue[j];
-	}
+	SingleStateOut.SpikeQueue.append(SpikeQueue);
 	SingleStateOut.CurrentQIndex = CurrentQIndex;
 	SingleStateOut.LSTNeuron = LSTNeuron;
 	SingleStateOut.LSTSyn = LSTSyn;
