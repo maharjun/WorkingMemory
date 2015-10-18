@@ -64,10 +64,19 @@ EndTimeIndex = find(RelTimes, 1, 'last');
 % 
 %   TimeArray(find(TimeArray >= BegTime, 1, 'first')+1:find(TimeArray < EndTime, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange);
 % 
+% However, since it is possible that 
+%    find(TimeArray < EndTime, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange
+% may lie outside the range of TimeArray, EndTimeIndex is modified from 
+%    
+%    find(TimeArray < EndTime, 1, 'last') + InputStruct.onemsbyTstep*InputStruct.DelayRange
+%          TO
+%    find(TimeArray < EndTime + InputStruct.onemsbyTstep*InputStruct.DelayRange, 1, 'last')
+
+
 % Calculating Total number of spikes
 % TimeRchdStartInds(EndTimeIndex) = StartingIndex of Spikes landing at time
 % instant TimeArray(EndTimeIndex)
-% Thus the above counts all spikes landing in
+% Thus the below counts all spikes landing in
 % TimeArray(BegTimeIndex+1:EndTimeIndex)
 TimeRchdStartInds = SpikeList.TimeRchdStartInds;
 TotalLength = double(TimeRchdStartInds(EndTimeIndex+1) - TimeRchdStartInds(BegTimeIndex+1));

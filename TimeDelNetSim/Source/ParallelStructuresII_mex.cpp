@@ -26,6 +26,7 @@
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\InterruptHandling.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
+#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
 						  
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
 
@@ -265,7 +266,7 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ)
 		this->WeightDerivOut = MexMatrix<float>(0, M);
-	
+
 	// Initializing Output State variables for Short Term STDP
 	if (OutputControl & OutOps::ST_STDP_RELATIVE_INC)
 		this->ST_STDP_RelativeIncOut = MexMatrix<float>(0, M);
@@ -282,7 +283,7 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 		this->LSTSynOut = MexMatrix<int>(0, M);
 
 	if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
-		this->SpikeQueueOut = MexVector<MexVector<MexVector<int> > >(0);
+		this->SpikeQueueOut = FlatVectTree<int>(2);
 
 	if (OutputControl & OutOps::CURRENT_QINDS_REQ)
 		this->CurrentQIndexOut = MexVector<int>(0);
@@ -327,7 +328,7 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->LSTNeuron = MexVector<int>(N);
 	this->LSTSyn = MexVector<int>(M);
 	this->ST_STDP_RelativeInc = MexVector<float>(M);
-	this->SpikeQueue = MexVector<MexVector<int> >(DelayRange*onemsbyTstep, MexVector<int>());
+	this->SpikeQueue = FlatVectTree<int>(1);
 	this->CurrentQIndex = -1;
 	this->Time = -1;
 }
@@ -445,9 +446,7 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 
 	SingleStateOut.ST_STDP_RelativeInc = ST_STDP_RelativeInc;
 
-	for (int j = 0; j < QueueSize; ++j){
-		SingleStateOut.SpikeQueue[j] = SpikeQueue[j];
-	}
+	SingleStateOut.SpikeQueue.append(SpikeQueue);
 	SingleStateOut.CurrentQIndex = CurrentQIndex;
 	SingleStateOut.LSTNeuron = LSTNeuron;
 	SingleStateOut.LSTSyn = LSTSyn;
@@ -457,15 +456,15 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	
 	// Input Vectors
-	InputStateOut.NStart             .resize(M);
-	InputStateOut.NEnd               .resize(M);
+	InputStateOut.NStart.resize(M);
+	InputStateOut.NEnd  .resize(M);
 	InputStateOut.InitialState.Weight.resize(M);
-	InputStateOut.Delay              .resize(M);
+	InputStateOut.Delay .resize(M);
 	
-	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart             .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NStart       ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd               .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NEnd         ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart.begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NStart       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd  .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NEnd         ; }));
 	MexTransform(Network.begin(), Network.end(), InputStateOut.InitialState.Weight.begin(), FFL([ ](Synapse &Syn)->float{return Syn.Weight       ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay              .begin(), FFL([&](Synapse &Syn)->float{return (float)Syn.DelayinTsteps / onemsbyTstep; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay .begin(), FFL([&](Synapse &Syn)->float{return (float)Syn.DelayinTsteps / onemsbyTstep; }));
 
 	InputStateOut.a.resize(N);
 	InputStateOut.b.resize(N);
@@ -491,7 +490,7 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.StatusDisplayInterval = StatusDisplayInterval ;
 
 	// Optional Simulation Algorithm Parameters
-	InputStateOut.I0                 = I0                 ;
+	InputStateOut.I0                  = I0                  ;
 	InputStateOut.STDPDecayFactor    = STDPDecayFactor    ;
 	InputStateOut.STDPMaxWinLen      = STDPMaxWinLen      ;
 	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
@@ -670,7 +669,7 @@ void SimulateParallel(
 	// CurrentDecayFactor
 
 	size_t QueueSize = SpikeQueue.size();
-	size_t N = IntVars.Neurons.size(), M = IntVars.Network.size();
+	size_t N = IntVars.Neurons.size(), M = IntVars.Network.size();			
 	
 	// VARIOuS ARRAYS USED apart from those in the argument list and Output List.
 	// Id like to call them intermediate arrays, required for simulation but are

@@ -1,6 +1,7 @@
 rmpath('..\..\x64\Debug_Lib');
 addpath('..\..\x64\Release_Lib');
 % addpath('export_fig-master');
+addpath ..\..\MexMemoryInterfacing\MatlabSource\
 
 %%
 rng('default');
@@ -57,9 +58,9 @@ InputStruct.U = single(0.2*InputStruct.V);
 
 InputStruct.onemsbyTstep                   = int32(1);
 InputStruct.NoOfms                         = int32(80*1000);
-InputStruct.DelayRange                     = int32(RecurrentNetParams.DelayRange);
+InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
 InputStruct.StorageStepSize                = int32(4000);
-InputStruct.OutputControl                  = strjoin(OutputOptions);
+InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval          = int32(2000);
 InputStruct.InitialState.Iext.IExtGenState = uint32(30);
 
@@ -237,6 +238,12 @@ clear InputStruct;
 % Getting Midway state
 InputStruct = InputStateSparse;
 InputStruct.InitialState = FinalStateSparse;
+% This code is used to maintain compatibility with old data generated
+% by previous code versions
+if iscell(InputStruct.InitialState.SpikeQueue)
+	InputStruct.InitialState.SpikeQueue = FlatCellArray.FlattenCellArray(InputStruct.InitialState.SpikeQueue);
+	InputStruct.InitialState.SpikeQueue = InputStruct.InitialState.SpikeQueue.Convert2Struct();
+end
 
 InputStruct.NoOfms                = int32(250*1000);
 InputStruct.StorageStepSize       = int32(0);

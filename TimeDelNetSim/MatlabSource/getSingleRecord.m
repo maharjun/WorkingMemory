@@ -2,7 +2,10 @@ function [ SingleRecord ] = getSingleRecord( InputData, Index )
 %GETSINGLERECORD Summary of this function goes here
 %   Detailed explanation goes here
 
-if isstruct(InputData)
+if isstruct(InputData) && isfield(InputData, 'ClassName') && strcmp(InputData.ClassName, 'FlatCellArray')
+	tempFCA = FlatCellArray([], InputData);
+	SingleRecord = tempFCA{Index}.Convert2Struct();
+elseif isstruct(InputData)
 	% Applying the same function on each of its fields
 	DataFieldNames = fieldnames(InputData);
 	for i = 1:length(DataFieldNames)

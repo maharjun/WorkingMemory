@@ -18,6 +18,7 @@
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
+#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
 #include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
 
 #include <xutility>
@@ -45,7 +46,7 @@ struct OutOps{
 		LASTSPIKED_NEU_REQ  = (1 << 6 ), 
 		LASTSPIKED_SYN_REQ  = (1 << 7 ), 
 		SPIKE_LIST_REQ      = (1 << 8 ), 
-		SPIKE_QUEUE_REQ     = (1 << 9 ), 
+		SPIKE_QUEUE_REQ     = (1 <<  9), 
 		TIME_REQ            = (1 << 10), 
 		U_REQ               = (1 << 11), 
 		V_REQ               = (1 << 12),
@@ -107,7 +108,7 @@ struct SingleStateStruct{
 	// IextInterface state variable component
 	IExtInterface::SingleStateStruct IextInterface;
 
-	MexVector<MexVector<int > > SpikeQueue;
+	FlatVectTree<int> SpikeQueue;
 	MexVector<int> LSTNeuron;
 	MexVector<int> LSTSyn;
 	int Time;
@@ -250,7 +251,7 @@ struct InternalVars{
 	// Change: remove this. 	
 	XorShiftPlus IExtGen;
 	size_t CurrentGenNeuron;
-	MexVector<MexVector<int> > &SpikeQueue;
+	MexVector<MexVector<int> > SpikeQueue;
 	MexVector<int> &LSTNeuron;
 	MexVector<int> &LSTSyn;
 
@@ -295,14 +296,14 @@ struct InternalVars{
 		Neurons               (M),
 		InterestingSyns       (IArgs.InterestingSyns),
 		V                     (IArgs.InitialState.V),
-		U                     (IArgs.InitialState.U),		
+		U                     (IArgs.InitialState.U),
 		Iin                   (N), 
 		// Iin is defined separately as an atomic vect.
 		WeightDeriv           (IArgs.InitialState.WeightDeriv),
 		ST_STDP_RelativeInc   (IArgs.InitialState.ST_STDP_RelativeInc),
 		IExtGen               (),
 		CurrentGenNeuron      (0),
-		SpikeQueue            (IArgs.InitialState.SpikeQueue),
+		SpikeQueue            (),
 		LSTNeuron             (IArgs.InitialState.LSTNeuron),
 		LSTSyn                (IArgs.InitialState.LSTSyn),
 
@@ -336,10 +337,10 @@ struct InternalVars{
 		
 		// Setting up Network and Neurons
 		Network.resize(M);
-		MexTransform(IArgs.NStart             .begin(), IArgs.NStart             .end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NStart)->void{Syn.NStart        = NStart       ; }));
-		MexTransform(IArgs.NEnd               .begin(), IArgs.NEnd               .end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NEnd  )->void{Syn.NEnd          = NEnd         ; }));
+		MexTransform(IArgs.NStart.begin(), IArgs.NStart.end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NStart)->void{Syn.NStart        = NStart       ; }));
+		MexTransform(IArgs.NEnd  .begin(), IArgs.NEnd  .end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NEnd  )->void{Syn.NEnd          = NEnd         ; }));
 		MexTransform(IArgs.InitialState.Weight.begin(), IArgs.InitialState.Weight.end(), Network.begin(), FFL([ ](Synapse &Syn, float &Weight)->void{Syn.Weight        = Weight       ; }));
-		MexTransform(IArgs.Delay              .begin(), IArgs.Delay              .end(), Network.begin(), FFL([&](Synapse &Syn, float &Delay )->void{Syn.DelayinTsteps = Delay*IArgs.onemsbyTstep + 0.5f; }));
+		MexTransform(IArgs.Delay .begin(), IArgs.Delay .end(), Network.begin(), FFL([&](Synapse &Syn, float &Delay )->void{Syn.DelayinTsteps = Delay*IArgs.onemsbyTstep + 0.5f; }));
 
 		Neurons.resize(N);
 		MexTransform(IArgs.a.begin(), IArgs.a.end(), Neurons.begin(), FFL([](Neuron &Neu, float &a)->void{Neu.a = a; }));
@@ -411,10 +412,13 @@ struct InternalVars{
 		);
 		
 		// Setting Initial Conditions of SpikeQueue
-		if (SpikeQueue.istrulyempty()){
+		if (IArgs.InitialState.SpikeQueue.istrulyempty()){
 			SpikeQueue = MexVector<MexVector<int> >(onemsbyTstep * DelayRange, MexVector<int>());
 		}
-		else if (SpikeQueue.size() != onemsbyTstep * DelayRange){
+		else if (IArgs.InitialState.SpikeQueue.depth() == 1 && IArgs.InitialState.SpikeQueue.LevelSize(0) == onemsbyTstep*DelayRange) {
+			IArgs.InitialState.SpikeQueue.getVectTree(SpikeQueue);
+		}
+		else {
 			// GIVE ERROR MESSAGE HERE
 			return;
 		}
@@ -476,10 +480,10 @@ struct StateVarsOutStruct{
 
 	// IExt Interface Output State variables
 	IExtInterface::StateOutStruct IextInterface;
-	
+
 	MexVector<int> TimeOut;
 
-	MexVector<MexVector<MexVector<int> > > SpikeQueueOut;
+	FlatVectTree<int> SpikeQueueOut;
 	MexVector<int> CurrentQIndexOut;
 	MexMatrix<int> LSTNeuronOut;
 	MexMatrix<int> LSTSynOut;

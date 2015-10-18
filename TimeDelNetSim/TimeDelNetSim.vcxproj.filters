@@ -22,6 +22,9 @@
     <Filter Include="Header Files\IExtHeaders">
       <UniqueIdentifier>{fda1de85-671b-4ba3-bb31-725abe9a1276}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\MexMemoryInterfacing\FlatVectTree">
+      <UniqueIdentifier>{f8d8282c-a6a3-4f9b-acf1-ab12857952f5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\MexFunctionInterface.cpp">
@@ -68,5 +71,22 @@
     <ClInclude Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.hpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\MexTypeTraits.hpp">
+      <Filter>Header Files\MexMemoryInterfacing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp">
+      <Filter>Header Files\MexMemoryInterfacing\FlatVectTree</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MexMemoryInterfacing\Headers\FlatVectTree\VectTreeInfo.hpp">
+      <Filter>Header Files\MexMemoryInterfacing\FlatVectTree</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.inl">
+      <Filter>Header Files\MexMemoryInterfacing\FlatVectTree</Filter>
+    </None>
+    <None Include="..\MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTreeIO.inl">
+      <Filter>Header Files\MexMemoryInterfacing\FlatVectTree</Filter>
+    </None>
   </ItemGroup>
 </Project>
