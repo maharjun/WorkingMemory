@@ -262,5 +262,5 @@ BegTime = (5*60 + 0)*60 + 240;
 EndTime = (5*60 + 0)*60 + 250;
 
 figure;
-[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, StateVarsSpikeList.Time, OutputVarsSpikeList.SpikeList);
+[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, OutputVarsSpikeList.SpikeList);
 plot(GenerationTimeVect - BegTime*1000*double(InputStruct.onemsbyTstep), double(InputStruct.NStart(SpikeSynIndVect)), '.', 'MarkerSize', 1);
