@@ -232,7 +232,7 @@ void CurrentAttenuate::operator() (tbb::blocked_range<int> &Range) const {
 	auto &attenFactor = IntVars.CurrentDecayFactor;
 
 	tbb::atomic<long long> *Begin1 = &Iin[Range.begin()];
-	tbb::atomic<long long> *End1 = &Iin[Range.end()-1] + 1;\
+	tbb::atomic<long long> *End1 = &Iin[Range.end()-1] + 1;
 
 	for (tbb::atomic<long long> *i = Begin1; i < End1; ++i){
 		(*i) = 0; //(long long)(float(i->load()) * attenFactor)
