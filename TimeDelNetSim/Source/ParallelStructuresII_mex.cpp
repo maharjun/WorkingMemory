@@ -154,6 +154,7 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 	auto & ST_STDP_EffectDecay     = IntVars.ST_STDP_EffectDecay;
 	auto & ST_STDP_MaxRelativeInc  = IntVars.ST_STDP_MaxRelativeInc;
 
+	auto & IinMax = IntVars.IinMax;
 	auto &onemsbyTstep = IntVars.onemsbyTstep;
 	auto &time = IntVars.Time;
 	auto &STDPMaxWinLen = IntVars.STDPMaxWinLen;
@@ -171,6 +172,9 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 		else{
 			//Implementing Izhikevich differential equation
 			float Vnew, Vtemp, Unew;
+			float IinCurr = (float)(Iin[j]) / (1i64 << 32);
+			Iin[j] = (long long)(((IinCurr > IinMax) ? IinMax : IinCurr)*(1i64 << 32));
+
 			Vnew = Vnow[j] + 0.5f*(Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
 			Vnew = (Vnew > -100) ? Vnew : -100;
 			Vnew = Vnew + 0.5f*(Vnew * (0.04f*Vnew + 5.0f) + 140.0f - Unow[j] + (float)(Iin[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
@@ -491,6 +495,7 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 
 	// Optional Simulation Algorithm Parameters
 	InputStateOut.I0                  = I0                  ;
+	InputStateOut.IinMax             = IinMax             ;
 	InputStateOut.STDPDecayFactor    = STDPDecayFactor    ;
 	InputStateOut.STDPMaxWinLen      = STDPMaxWinLen      ;
 	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
