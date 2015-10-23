@@ -162,6 +162,7 @@ struct InputArgs{
 
 	// Optional Simulation Algorithm Parameters
 	float I0;
+	float TotalWeightInThresh; // Normalization occurs if Total Weight In exceeds given Threshold during Causal STDP
 	float CurrentDecayFactor;	
 	float STDPDecayFactor;
 	int   STDPMaxWinLen;
@@ -215,6 +216,7 @@ struct InternalVars{
 
 	// Optional Simulation Algorithm Parameters
 	const float I0;
+	const float TotalWeightInThresh;
 	const float CurrentDecayFactor;
 	const float STDPDecayFactor;
 	const int STDPMaxWinLen;
@@ -323,6 +325,7 @@ struct InternalVars{
 		DelayRange         (IArgs.DelayRange),
 		CacheBuffering     (128),
 		I0                 (IArgs.I0),
+		TotalWeightInThresh(IArgs.TotalWeightInThresh),
 		STDPMaxWinLen      (IArgs.STDPMaxWinLen),
 		CurrentDecayFactor (IArgs.CurrentDecayFactor),
 		STDPDecayFactor    (IArgs.STDPDecayFactor),

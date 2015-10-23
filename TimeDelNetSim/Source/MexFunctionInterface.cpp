@@ -138,6 +138,7 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	
 	// set default values of Optional Simulation Algorithm Parameters
 	InputArgList.I0                 = 1.0f;
+	InputArgList.TotalWeightInThresh = 100.0f;
 	InputArgList.STDPDecayFactor    = powf(0.95f, 1.0f / InputArgList.onemsbyTstep);
 	InputArgList.STDPMaxWinLen      = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
 	InputArgList.CurrentDecayFactor = powf(1.0f / 3.5f, 1.0f / InputArgList.onemsbyTstep);
@@ -175,6 +176,7 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 
 	// Setting Values for Optional Simulation Algorithm Parameters
 	getInputfromStruct<float>(MatlabInputStruct, "I0"                , InputArgList.I0                );
+	getInputfromStruct<float>(MatlabInputStruct, "TotalWeightInThresh", InputArgList.TotalWeightInThresh);
 	getInputfromStruct<float>(MatlabInputStruct, "STDPDecayFactor"   , InputArgList.STDPDecayFactor   );
 	if (getInputfromStruct<int>(MatlabInputStruct, "STDPMaxWinLen", InputArgList.STDPMaxWinLen, 3, "is_required", "no_except", "quiet")){
 		InputArgList.STDPMaxWinLen = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
@@ -419,6 +421,7 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 		"Delay"                ,
 		"InterestingSyns"      ,
 		"I0"                   ,
+		"TotalWeightInThresh"  ,
 		"STDPDecayFactor"      ,
 		"STDPMaxWinLen"        ,
 		"CurrentDecayFactor"   ,
@@ -461,6 +464,7 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 	
 	// Assigning Optional Simulation Algorithm Parameters
 	mxSetField(ReturnPointer, 0, "I0"                  , assignmxArray(InputStateStruct.I0                  , mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "TotalWeightInThresh" , assignmxArray(InputStateStruct.TotalWeightInThresh , mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "STDPDecayFactor"     , assignmxArray(InputStateStruct.STDPDecayFactor     , mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "STDPMaxWinLen"       , assignmxArray(InputStateStruct.STDPMaxWinLen       , mxINT32_CLASS));
 	mxSetField(ReturnPointer, 0, "CurrentDecayFactor"  , assignmxArray(InputStateStruct.CurrentDecayFactor  , mxSINGLE_CLASS));

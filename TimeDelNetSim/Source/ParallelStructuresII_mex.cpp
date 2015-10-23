@@ -192,7 +192,8 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 				MexVector<size_t>::iterator kbegin = AuxArray.begin() + PostSynNeuronSectionBeg[j];
 				MexVector<size_t>::iterator kend   = AuxArray.begin() + PostSynNeuronSectionEnd[j];
 				
-				// Implementing STDP only for Exc-Exc Synapses (remaining condition inside loop)
+				// Implementing STDP and Normalization only for Exc-Exc Synapses (remaining condition inside loop)
+				float TotalExcWeightsIn = 0.0f;
 				if (kbegin != kend && j < IntVars.NExc)
 				for (MexVector<size_t>::iterator k = kbegin; k < kend; ++k){
 					size_t CurrSynIndex = *k;
@@ -216,8 +217,30 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 						// Performing Causal Long Term and Short Term STDP Updates
 						size_t SpikeTimeDiffCurr = time - CurrLSTSyn;
 						CurrRelativeInc += ST_STDP_EffectMaxCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
-						ST_STDP_RelativeInc[CurrSynIndex] = (CurrRelativeInc > ST_STDP_MaxRelativeInc)? ST_STDP_MaxRelativeInc : CurrRelativeInc;
+						CurrRelativeInc = (CurrRelativeInc > ST_STDP_MaxRelativeInc)? ST_STDP_MaxRelativeInc : CurrRelativeInc;
+						ST_STDP_RelativeInc[CurrSynIndex] = CurrRelativeInc;
 						WeightDeriv[CurrSynIndex] += ((SpikeTimeDiffCurr < STDPMaxWinLen) ? ExpVect[SpikeTimeDiffCurr] : 0);
+
+						// Calculating sum of excitatory weights into the neuron
+						TotalExcWeightsIn += CurrSynPtr->Weight*((CurrRelativeInc+1 > 0) ? CurrRelativeInc+1 : 0);
+					}
+					else {
+						// If Synapse is not excitatory, then all subsequent synapses are not excitatory 
+						// due to sorted nature of NStart for incoming synapses
+						break;
+					}
+				}
+
+				// Performing ST-STDP Normalization Procedure for Excitatory Neuron
+				if (kbegin != kend && j < IntVars.NExc) {
+					// Calculating Normalization Factor
+					float NormFactor = (TotalExcWeightsIn > IntVars.TotalWeightInThresh) ? IntVars.TotalWeightInThresh / TotalExcWeightsIn : 1;
+
+					// Looping through pre-synaptic neurons and applying normalization
+					for (MexVector<size_t>::iterator k = kbegin; k < kend; ++k) {
+						size_t CurrSynIndex = *k;
+						auto & CurrRelativeInc = ST_STDP_RelativeInc[CurrSynIndex];
+						CurrRelativeInc = (CurrRelativeInc + 1 > 0) ? (1 + CurrRelativeInc)*NormFactor - 1: -1;
 					}
 				}
 
@@ -491,6 +514,7 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 
 	// Optional Simulation Algorithm Parameters
 	InputStateOut.I0                  = I0                  ;
+	InputStateOut.TotalWeightInThresh = TotalWeightInThresh;
 	InputStateOut.STDPDecayFactor    = STDPDecayFactor    ;
 	InputStateOut.STDPMaxWinLen      = STDPMaxWinLen      ;
 	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
