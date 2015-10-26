@@ -162,6 +162,9 @@ struct InputArgs{
 
 	// Optional Simulation Algorithm Parameters
 	float I0;
+	float RSMWeightInThresh; // Normalization occurs if Total Weight In exceeds given Threshold during Causal STDP
+	float BluntnessThresh;   // ReSharpening occurs if Bluntness exceeds given Threshold during Causal STDP
+	float ResharpeningExp;   // ReSharpening occurs if Bluntness exceeds given Threshold during Causal STDP
 	float CurrentDecayFactor;	
 	float STDPDecayFactor;
 	int   STDPMaxWinLen;
@@ -215,6 +218,9 @@ struct InternalVars{
 
 	// Optional Simulation Algorithm Parameters
 	const float I0;
+	const float RSMWeightInThresh;
+	const float BluntnessThresh;
+	const float ResharpeningExp;
 	const float CurrentDecayFactor;
 	const float STDPDecayFactor;
 	const int STDPMaxWinLen;
@@ -323,6 +329,9 @@ struct InternalVars{
 		DelayRange         (IArgs.DelayRange),
 		CacheBuffering     (128),
 		I0                 (IArgs.I0),
+		RSMWeightInThresh  (IArgs.RSMWeightInThresh),
+		BluntnessThresh    (IArgs.BluntnessThresh),
+		ResharpeningExp    (IArgs.ResharpeningExp),
 		STDPMaxWinLen      (IArgs.STDPMaxWinLen),
 		CurrentDecayFactor (IArgs.CurrentDecayFactor),
 		STDPDecayFactor    (IArgs.STDPDecayFactor),
