@@ -92,13 +92,16 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 		auto CurrLSTSyn      = LastSpikedTimeSyn[CurrentSynapseInd];
 		auto CurrRelativeInc = ST_STDP_RelativeInc[CurrentSynapseInd];
 
-		// Calculating Actual Value of CurrRelativeInc from last update for Exc-Exc Synapse
-		if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
-		if (CurrLSTNeuron != -1 && CurrLSTSyn != -1) {
-			// This means Update has happened before.
-			// The time of the update is as below
-			auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
-			CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
+		// Calculating and updating Actual Value of CurrRelativeInc (only for first iteration) from last update for Exc-Exc Synapse
+		if (IntVars.i == 1) {
+			if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
+			if (CurrLSTNeuron != -1 && CurrLSTSyn != -1) {
+				// This means Update has happened before.
+				// The time of the update is as below
+				auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
+				CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
+			}
+			ST_STDP_RelativeInc[CurrentSynapseInd] = CurrRelativeInc;
 		}
 
 		// Performing Synaptic Current Injection Using CurrRelativeInc and Weight of synapse
@@ -109,15 +112,8 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 
 		Iin[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
 
-		// Performing the LT and ST STDP updates for Exc-Exc Synapse
-		if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
-		if (CurrLSTNeuron >= 0){
-			size_t SpikeTimeDiffCurr = time - CurrLSTNeuron - 1;
-			ST_STDP_RelativeInc[CurrentSynapseInd] -= ST_STDP_EffectMaxAntiCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
-			// ST_STDP_RelativeInc[CurrentSynapseInd] = (ST_STDP_RelativeInc[CurrentSynapseInd] < 0) ? 0 : ST_STDP_RelativeInc[CurrentSynapseInd];
-			WeightDeriv[CurrentSynapseInd] -= ((SpikeTimeDiffCurr < STDPMaxWinLen) ? 1.2f*ExpVect[SpikeTimeDiffCurr] : 0);
-		}
-
+		// Performing NO STDP updates for any Synapse
+		
 		LastSpikedTimeSyn[CurrentSynapseInd] = time;
 	}
 }
@@ -188,40 +184,12 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 				Vnow[j] = Neurons[j].c;
 				Unow[j] += Neurons[j].d;
 
-				//Space to implement any causal Learning Rule
-				MexVector<size_t>::iterator kbegin = AuxArray.begin() + PostSynNeuronSectionBeg[j];
-				MexVector<size_t>::iterator kend   = AuxArray.begin() + PostSynNeuronSectionEnd[j];
-				
-				// Implementing STDP only for Exc-Exc Synapses (remaining condition inside loop)
-				if (kbegin != kend && j < IntVars.NExc)
-				for (MexVector<size_t>::iterator k = kbegin; k < kend; ++k){
-					size_t CurrSynIndex = *k;
-					MexVector<Synapse>::iterator CurrSynPtr = Network.begin() + CurrSynIndex;
+				// Space to implement any causal Learning Rule
+				// Implementing NO STDP
 
-					// Initializing relevant constants
-					auto CurrLSTNeuron   = LastSpikedTimeNeuron[j];
-					auto CurrLSTSyn      = LastSpikedTimeSynapse[CurrSynIndex];
-					auto CurrRelativeInc = ST_STDP_RelativeInc[CurrSynIndex];
-
-					// If Synapse is Excitatory and has spiked before
-					if (CurrLSTSyn != -1 && CurrSynIndex < IntVars.MExc) {
-						// Calculating actual value of CurrRelativeInc
-						if (CurrLSTNeuron != -1) {
-							// This means Update has happened before.
-							// The time of the update is as below
-							auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
-							CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
-						}
-
-						// Performing Causal Long Term and Short Term STDP Updates
-						size_t SpikeTimeDiffCurr = time - CurrLSTSyn;
-						CurrRelativeInc += ST_STDP_EffectMaxCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
-						ST_STDP_RelativeInc[CurrSynIndex] = (CurrRelativeInc > ST_STDP_MaxRelativeInc)? ST_STDP_MaxRelativeInc : CurrRelativeInc;
-						WeightDeriv[CurrSynIndex] += ((SpikeTimeDiffCurr < STDPMaxWinLen) ? ExpVect[SpikeTimeDiffCurr] : 0);
-					}
-				}
-
-				LastSpikedTimeNeuron[j] = time;
+				// Propagating spike only if IExt > 0 for current time step
+				if (Iext[j] > 0.0)
+					LastSpikedTimeNeuron[j] = time;
 			}
 		}
 	}
