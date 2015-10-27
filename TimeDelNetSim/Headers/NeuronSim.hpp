@@ -53,7 +53,8 @@ struct OutOps{
 		WEIGHT_DERIV_REQ    = (1 << 13), 
 		WEIGHT_REQ          = (1 << 14), 
 		ST_STDP_RELATIVE_INC = (1 << 15),
-		GEN_SPIKE_LIST_REQ  = (1 << 16)
+		GEN_SPIKE_LIST_REQ  = (1 << 16),
+		LAST_IEXT_IN_TIME_REQ = (1 << 17)
 	};
 };
 
@@ -101,6 +102,7 @@ struct SingleStateStruct{
 	MexVector<float> V;
 	MexVector<float> U;
 	MexVector<float> Iin;
+	MexVector<int>   LastIExtInTime;
 	MexVector<float> WeightDeriv;
 	
 	// Short Term STDP State Variables
@@ -120,6 +122,7 @@ struct SingleStateStruct{
 		V(),
 		U(),
 		Iin(),
+		LastIExtInTime(),
 		WeightDeriv(),
 		ST_STDP_RelativeInc(),
 		IextInterface(),
@@ -242,6 +245,7 @@ struct InternalVars{
 	MexVector<float> &V;
 	MexVector<float> &U;
 	atomicLongVect Iin;
+	MexVector<int> &LastIExtInTime;
 	MexVector<float> &WeightDeriv;
 
 	// Short Term STDP State variables
@@ -298,7 +302,8 @@ struct InternalVars{
 		InterestingSyns       (IArgs.InterestingSyns),
 		V                     (IArgs.InitialState.V),
 		U                     (IArgs.InitialState.U),
-		Iin                   (N), 
+		Iin                   (N),
+		LastIExtInTime        (IArgs.InitialState.LastIExtInTime),
 		// Iin is defined separately as an atomic vect.
 		WeightDeriv           (IArgs.InitialState.WeightDeriv),
 		ST_STDP_RelativeInc   (IArgs.InitialState.ST_STDP_RelativeInc),
@@ -384,6 +389,14 @@ struct InternalVars{
 		//else{
 		//	Iin is already initialized to zero by tbb::zero_allocator<long long>
 		//}
+
+		if (LastIExtInTime.istrulyempty()) {
+			LastIExtInTime.resize(N, -1);
+		}
+		else if (LastIExtInTime.size() != N) {
+			// GIVE ERROR MESSAGE HEREx
+			return;
+		}
 
 		// Setting Initial Conditions for Weight Derivative
 		if (IArgs.InitialState.WeightDeriv.istrulyempty()){
@@ -482,6 +495,7 @@ struct StateVarsOutStruct{
 	MexMatrix<float> VOut;
 	MexMatrix<float> UOut;
 	MexMatrix<float> IinOut;
+	MexMatrix<int>   LastIExtInTimeOut;
 	MexMatrix<float> WeightDerivOut;
 
 	// Short Term STDP Variables
@@ -502,6 +516,7 @@ struct StateVarsOutStruct{
 		VOut(),
 		UOut(),
 		IinOut(),
+		LastIExtInTimeOut(),
 		WeightDerivOut(),
 		ST_STDP_RelativeIncOut(),
 		IextInterface(),

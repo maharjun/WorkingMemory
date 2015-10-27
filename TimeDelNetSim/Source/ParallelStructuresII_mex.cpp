@@ -177,6 +177,10 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 			Vnow[j] = (Vnew > -100)? Vnew: -100;
 			Unow[j] = Unew;
 
+			// Register the input of a non-zero IExt
+			if (Iext[j] > 0.0f)
+				IntVars.LastIExtInTime[j] = time;
+
 			//Implementing Network Computation in case a Neuron has spiked in the current interval
 			if (Vnow[j] >= 30.0f){
 				//Vnow[j] = 30.0f;
@@ -188,8 +192,8 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 				// Implementing NO STDP
 				
 				// Propagating spike only if IExt > 0 for current time step
-				if (Iext[j] > 0.0)
-				LastSpikedTimeNeuron[j] = time;
+				if (IntVars.LastIExtInTime[j] >= 0 && time - IntVars.LastIExtInTime[j] < 5)
+					LastSpikedTimeNeuron[j] = time;
 			}
 		}
 	}
@@ -231,6 +235,9 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 
 	if (OutputControl & OutOps::I_IN_REQ)
 		this->IinOut = MexMatrix<float>(0, N);
+
+	if (OutputControl & OutOps::LAST_IEXT_IN_TIME_REQ)
+		this->LastIExtInTimeOut = MexMatrix<int>(0, N);
 
 	if (OutputControl & OutOps::WEIGHT_DERIV_REQ)
 		this->WeightDerivOut = MexMatrix<float>(0, M);
@@ -294,6 +301,7 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->V = MexVector<float>(N);
 	this->U = MexVector<float>(N);
 	this->Iin = MexVector<float>(N);
+	this->LastIExtInTime = MexVector<int>(N);
 	this->WeightDeriv = MexVector<float>(M);
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 	this->Weight = MexVector<float>(M);
@@ -318,6 +326,8 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 			for (int j = 0; j < N; ++j)
 				StateOut.IinOut.lastRow()[j] = (float)Iin[j] / (1i64 << 32);
 		}
+		if (OutputControl & OutOps::LAST_IEXT_IN_TIME_REQ)
+			StateOut.LastIExtInTimeOut.push_row(LastIExtInTime);
 
 		//Storing Weight Derivative
 		if (OutputControl & OutOps::WEIGHT_DERIV_REQ) {
@@ -430,6 +440,7 @@ void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 	for (int j = 0; j < M; ++j){
 		SingleStateOut.Weight[j] = Network[j].Weight;
 	}
+	SingleStateOut.LastIExtInTime = LastIExtInTime;
 	SingleStateOut.WeightDeriv = WeightDeriv;
 
 	SingleStateOut.ST_STDP_RelativeInc = ST_STDP_RelativeInc;

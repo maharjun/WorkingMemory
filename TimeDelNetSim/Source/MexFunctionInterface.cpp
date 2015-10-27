@@ -55,6 +55,7 @@ int getOutputControl(char* OutputControlSequence){
 		if (AddorRemove && !_strcmpi(SequenceWord, "FSF"))
 			OutputControl |= OutOps::V_REQ | OutOps::U_REQ 
 						   | OutOps::I_IN_REQ
+						   | OutOps::LAST_IEXT_IN_TIME_REQ
 						   | OutOps::WEIGHT_DERIV_REQ 
 			               | OutOps::WEIGHT_REQ
 						   | OutOps::CURRENT_QINDS_REQ
@@ -75,6 +76,10 @@ int getOutputControl(char* OutputControlSequence){
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_IN_REQ : 
 					 OutputControl & ~(OutOps::I_IN_REQ);
+		if (!_strcmpi(SequenceWord, "LastIExtInTime"))
+			OutputControl = AddorRemove ? 
+			         OutputControl | OutOps::LAST_IEXT_IN_TIME_REQ : 
+					 OutputControl & ~(OutOps::LAST_IEXT_IN_TIME_REQ);
 		if (!_strcmpi(SequenceWord, "WeightDeriv"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::WEIGHT_DERIV_REQ : 
@@ -210,6 +215,7 @@ void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgLi
 	getInputfromStruct<float>(MatlabInputStruct, "InitialState.V"   , InputArgList.InitialState.V   , 1, "required_size", N);
 	getInputfromStruct<float>(MatlabInputStruct, "InitialState.U"   , InputArgList.InitialState.U   , 1, "required_size", N);
 	getInputfromStruct<float>(MatlabInputStruct, "InitialState.Iin" , InputArgList.InitialState.Iin , 1, "required_size", N);
+	getInputfromStruct<int>(MatlabInputStruct, "InitialState.LastIExtInTime" , InputArgList.InitialState.LastIExtInTime , 1, "required_size", N);
 
 	// Initializing WeightDeriv
 	getInputfromStruct<float>(MatlabInputStruct, "InitialState.WeightDeriv", InputArgList.InitialState.WeightDeriv, 1, "required_size", M);
@@ -313,6 +319,7 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 		"V",
 		"Iin",
 		"WeightDeriv",
+		"LastIExtInTime",
 		"Iext",
 		"Time",
 		"U",
@@ -334,6 +341,7 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 	mxSetField(ReturnPointer, 0, "V"             , assignmxArray(Output.VOut, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "U"             , assignmxArray(Output.UOut, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "Iin"           , assignmxArray(Output.IinOut, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "LastIExtInTime", assignmxArray(Output.LastIExtInTimeOut, mxINT32_CLASS));
 	mxSetField(ReturnPointer, 0, "WeightDeriv"   , assignmxArray(Output.WeightDerivOut, mxSINGLE_CLASS));
 	
 	// Assigning Iext State variables
@@ -367,6 +375,7 @@ mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 		"V",
 		"Iin",
 		"WeightDeriv",
+		"LastIExtInTime",
 		"Iext",
 		"Time",
 		"U",
@@ -388,6 +397,7 @@ mxArray * putSingleStatetoMatlabStruct(SingleStateStruct &SingleStateList){
 	mxSetField(ReturnPointer, 0, "V"                 , assignmxArray(SingleStateList.V, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "U"                 , assignmxArray(SingleStateList.U, mxSINGLE_CLASS));
 	mxSetField(ReturnPointer, 0, "Iin"               , assignmxArray(SingleStateList.Iin, mxSINGLE_CLASS));
+	mxSetField(ReturnPointer, 0, "LastIExtInTime"    , assignmxArray(SingleStateList.LastIExtInTime, mxINT32_CLASS));
 	mxSetField(ReturnPointer, 0, "WeightDeriv"       , assignmxArray(SingleStateList.WeightDeriv, mxSINGLE_CLASS));
 	
 	// Assigning IExt State variables
