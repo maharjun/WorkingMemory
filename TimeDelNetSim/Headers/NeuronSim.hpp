@@ -45,14 +45,15 @@ struct OutOps{
 		I_TOT_REQ           = (1 << 5 ), 
 		LASTSPIKED_NEU_REQ  = (1 << 6 ), 
 		LASTSPIKED_SYN_REQ  = (1 << 7 ), 
-		SPIKE_LIST_REQ      = (1 << 8 ), 
+		PROP_SPIKE_LIST_REQ = (1 << 8 ), 
 		SPIKE_QUEUE_REQ     = (1 <<  9), 
 		TIME_REQ            = (1 << 10), 
 		U_REQ               = (1 << 11), 
 		V_REQ               = (1 << 12),
 		WEIGHT_DERIV_REQ    = (1 << 13), 
 		WEIGHT_REQ          = (1 << 14), 
-		ST_STDP_RELATIVE_INC = (1 << 15)
+		ST_STDP_RELATIVE_INC = (1 << 15),
+		GEN_SPIKE_LIST_REQ  = (1 << 16)
 	};
 };
 
@@ -449,21 +450,29 @@ struct OutputVarsStruct{
 	MexMatrix<float> Itot;
 	MexVector<uint64_t> NoOfSpikes;
 
+	struct GenSpikeListStruct {
+		MexVector<int> TimeGen;
+		FlatVectTree<int> SpikeNeuronInds;
+
+		GenSpikeListStruct() : TimeGen(), SpikeNeuronInds(1) {}
+	} GenSpikeList;
+
 	IExtInterface::OutputVarsStruct IextInterface;
 
-	struct SpikeListStruct{
+	struct PropSpikeListStruct{
 		MexVector<int> SpikeSynInds;
 		MexVector<int> TimeRchdStartInds;
 		MexVector<int> TimeRchd;
-		SpikeListStruct() : SpikeSynInds(), TimeRchdStartInds(), TimeRchd() {}
-	} SpikeList;
+		PropSpikeListStruct() : SpikeSynInds(), TimeRchdStartInds(), TimeRchd() {}
+	} PropSpikeList;
 
 	OutputVarsStruct() :
 		WeightOut(),
 		Itot(),
 		NoOfSpikes(),
 		IextInterface(),
-		SpikeList(){}
+		PropSpikeList(),
+		GenSpikeList() {}
 
 	void initialize(const InternalVars &);
 };

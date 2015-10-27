@@ -107,10 +107,14 @@ int getOutputControl(char* OutputControlSequence){
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_TOT_REQ : 
 					 OutputControl & ~(OutOps::I_TOT_REQ);
-		if (!_strcmpi(SequenceWord, "SpikeList"))
+		if (!_strcmpi(SequenceWord, "PropSpikeList"))
 			OutputControl = AddorRemove ? 
-			         OutputControl | OutOps::SPIKE_LIST_REQ : 
-					 OutputControl & ~(OutOps::SPIKE_LIST_REQ);
+			         OutputControl | OutOps::PROP_SPIKE_LIST_REQ : 
+					 OutputControl & ~(OutOps::PROP_SPIKE_LIST_REQ);
+		if (!_strcmpi(SequenceWord, "GenSpikeList"))
+			OutputControl = AddorRemove ? 
+			         OutputControl | OutOps::GEN_SPIKE_LIST_REQ : 
+					 OutputControl & ~(OutOps::GEN_SPIKE_LIST_REQ);
 		if (!_strcmpi(SequenceWord, "Final"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::FINAL_STATE_REQ : 
@@ -253,7 +257,8 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 		"Itot",
 		"Iext",
 		"NoOfSpikes",
-		"SpikeList",
+		"PropSpikeList",
+		"GenSpikeList",
 		nullptr
 	};
 
@@ -273,20 +278,32 @@ mxArray * putOutputToMatlabStruct(OutputVarsStruct &Output){
 	mxArrayPtr IExtOutVarsStruct = IExtInterface::putOutputVarstoMATLABStruct(Output.IextInterface);
 	mxSetField(ReturnPointer, 0, "Iext", IExtOutVarsStruct);
 
-	// Assigning SpikeList
-	mxArray * SpikeListStructPtr;
-		const char *SpikeListFieldNames[] = {
+	// Assigning PropSpikeList
+	mxArray * PropSpikeListStructPtr;
+		const char *PropSpikeListFieldNames[] = {
 			"SpikeSynInds",
 			"TimeRchdStartInds",
 			"TimeRchd"
 		};
-		SpikeListStructPtr = mxCreateStructArray(1, StructArraySize, 3, SpikeListFieldNames);
-		Output.SpikeList.SpikeSynInds.trim();
-		Output.SpikeList.TimeRchdStartInds.trim();
-		mxSetField(SpikeListStructPtr, 0, "SpikeSynInds"     , assignmxArray(Output.SpikeList.SpikeSynInds, mxINT32_CLASS));
-		mxSetField(SpikeListStructPtr, 0, "TimeRchdStartInds", assignmxArray(Output.SpikeList.TimeRchdStartInds, mxINT32_CLASS));
-		mxSetField(SpikeListStructPtr, 0, "TimeRchd"         , assignmxArray(Output.SpikeList.TimeRchd         , mxINT32_CLASS));
-	mxSetField(ReturnPointer, 0, "SpikeList", SpikeListStructPtr);
+		PropSpikeListStructPtr = mxCreateStructArray(1, StructArraySize, 3, PropSpikeListFieldNames);
+		Output.PropSpikeList.SpikeSynInds.trim();
+		Output.PropSpikeList.TimeRchdStartInds.trim();
+		mxSetField(PropSpikeListStructPtr, 0, "SpikeSynInds"     , assignmxArray(Output.PropSpikeList.SpikeSynInds, mxINT32_CLASS));
+		mxSetField(PropSpikeListStructPtr, 0, "TimeRchdStartInds", assignmxArray(Output.PropSpikeList.TimeRchdStartInds, mxINT32_CLASS));
+		mxSetField(PropSpikeListStructPtr, 0, "TimeRchd"         , assignmxArray(Output.PropSpikeList.TimeRchd         , mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "PropSpikeList", PropSpikeListStructPtr);
+
+	// Assigning GenSpikeList
+	mxArray * GenSpikeListStructPtr;
+		const char *GenSpikeListFieldNames[] = {
+			"SpikeNeuronInds",
+			"TimeGen"
+		};
+		
+		GenSpikeListStructPtr = mxCreateStructArray(1, StructArraySize, 2, GenSpikeListFieldNames);
+		mxSetField(GenSpikeListStructPtr, 0, "SpikeNeuronInds"  , assignmxArray(Output.GenSpikeList.SpikeNeuronInds));
+		mxSetField(GenSpikeListStructPtr, 0, "TimeGen"          , assignmxArray(Output.GenSpikeList.TimeGen, mxINT32_CLASS));
+	mxSetField(ReturnPointer, 0, "GenSpikeList", GenSpikeListStructPtr);
 
 	return ReturnPointer;
 }

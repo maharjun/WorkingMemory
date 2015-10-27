@@ -94,12 +94,12 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 
 		// Calculating and updating Actual Value of CurrRelativeInc (only for first iteration) from last update for Exc-Exc Synapse
 		if (IntVars.i == 1) {
-			if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
-			if (CurrLSTNeuron != -1 && CurrLSTSyn != -1) {
-				// This means Update has happened before.
-				// The time of the update is as below
-				auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
-				CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
+		if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
+		if (CurrLSTNeuron != -1 && CurrLSTSyn != -1) {
+			// This means Update has happened before.
+			// The time of the update is as below
+			auto LastUpdateTime = (CurrLSTNeuron > CurrLSTSyn) ? CurrLSTNeuron : CurrLSTSyn; // max(CurrLSTNeuron, CurrLSTSyn)
+			CurrRelativeInc *= pow(ST_STDP_DecayWithTime, time - LastUpdateTime);
 			}
 			ST_STDP_RelativeInc[CurrentSynapseInd] = CurrRelativeInc;
 		}
@@ -113,7 +113,7 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 		Iin[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
 
 		// Performing NO STDP updates for any Synapse
-		
+
 		LastSpikedTimeSyn[CurrentSynapseInd] = time;
 	}
 }
@@ -184,12 +184,12 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 				Vnow[j] = Neurons[j].c;
 				Unow[j] += Neurons[j].d;
 
-				// Space to implement any causal Learning Rule
+				//Space to implement any causal Learning Rule
 				// Implementing NO STDP
-
+				
 				// Propagating spike only if IExt > 0 for current time step
 				if (Iext[j] > 0.0)
-					LastSpikedTimeNeuron[j] = time;
+				LastSpikedTimeNeuron[j] = time;
 			}
 		}
 	}
@@ -276,7 +276,11 @@ void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	// Initializing Output Variables for IextInterface
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 
-	if ((OutputControl & OutOps::SPIKE_LIST_REQ) && !StorageStepSize);
+	if ((OutputControl & OutOps::PROP_SPIKE_LIST_REQ) && !StorageStepSize);
+		// The vector is initialized to size zero regardless. the If condition is 
+		// just kept for code conformity
+
+	if ((OutputControl & OutOps::GEN_SPIKE_LIST_REQ) && !StorageStepSize);
 		// The vector is initialized to size zero regardless. the If condition is 
 		// just kept for code conformity
 }
@@ -371,25 +375,41 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 		NoOfSpikes = 0;
 	}
 
-	// Storing Spike List (Only if StorageStepSize == 0
-	if (OutputControl & OutOps::SPIKE_LIST_REQ) {
-		OutVars.SpikeList.TimeRchd         .push_back(Time+1);
-		OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
+	// Storing Propagated Spike List
+	if (OutputControl & OutOps::PROP_SPIKE_LIST_REQ) {
+		OutVars.PropSpikeList.TimeRchd         .push_back(Time+1);
+		OutVars.PropSpikeList.TimeRchdStartInds.push_back(OutVars.PropSpikeList.SpikeSynInds.size());
 		for (auto Spike : SpikeQueue[CurrentQIndex]) {
-			OutVars.SpikeList.SpikeSynInds.push_back(Spike);
+			OutVars.PropSpikeList.SpikeSynInds.push_back(Spike);
 		}
 		if (i == nSteps) {
 			// Storing spikes which are generated but not gonna arrive next turn
 			for (int j = 1; j < DelayRange*onemsbyTstep; ++j) {
-				OutVars.SpikeList.TimeRchd         .push_back(Time + j + 1);
-				OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
+				OutVars.PropSpikeList.TimeRchd         .push_back(Time + j + 1);
+				OutVars.PropSpikeList.TimeRchdStartInds.push_back(OutVars.PropSpikeList.SpikeSynInds.size());
 				for (auto Spike : SpikeQueue[(CurrentQIndex + j) % (onemsbyTstep*DelayRange)]) {
-					OutVars.SpikeList.SpikeSynInds.push_back(Spike);
+					OutVars.PropSpikeList.SpikeSynInds.push_back(Spike);
 				}
 			}
-			OutVars.SpikeList.TimeRchdStartInds.push_back(OutVars.SpikeList.SpikeSynInds.size());
+			OutVars.PropSpikeList.TimeRchdStartInds.push_back(OutVars.PropSpikeList.SpikeSynInds.size());
 			// Final push_back in order to be able to infer end.
 		}
+	}
+
+	// Storing Generated SpikeList
+	if (OutputControl & OutOps::GEN_SPIKE_LIST_REQ) {
+		OutVars.GenSpikeList.TimeGen.push_back(Time);
+
+		// Finding all neurons which spiked at current time instant
+		MexVector<int> CurrentSpikedNeurons;
+		for (int j = 0; j < N; ++j) {
+			if (V[j] == Neurons[j].c) {
+				CurrentSpikedNeurons.push_back(j + 1);
+			}
+		}
+
+		// Pushing into Flat Vect Tree
+		OutVars.GenSpikeList.SpikeNeuronInds.push_back(CurrentSpikedNeurons);
 	}
 }
 void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
