@@ -272,7 +272,8 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 							auto & CurrRelativeInc = ST_STDP_RelativeInc[CurrSynIndex];
 							float CurrSynWeight = (Network.begin() + CurrSynIndex)->Weight;
 
-							CurrRelativeInc = (CurrRelativeInc + 1 > 0) ? std::pow(CurrSynWeight*(1 + CurrRelativeInc)*InvMaxWeightIn, IntVars.ResharpeningExp)*MaximumWeightsIn/CurrSynWeight - 1 : -1;
+							if (CurrSynWeight > 0.0f)
+								CurrRelativeInc = (CurrRelativeInc + 1 > 0) ? std::pow(CurrSynWeight*(1 + CurrRelativeInc)*InvMaxWeightIn, IntVars.ResharpeningExp)*MaximumWeightsIn/CurrSynWeight - 1 : -1;
 						}
 					}
 				}
