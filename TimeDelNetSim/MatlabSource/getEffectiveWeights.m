@@ -1,10 +1,16 @@
-function [ EffectiveWeights ] = getEffectiveWeights(Weights, ST_STDP_RelativeInc)
+function [ EffectiveWeights ] = getEffectiveWeights(State, InputStruct)
 %GETEFFECTIVEWEIGHTS Summary of this function goes here
 %   Detailed explanation goes here
 
-EffectiveWeights = ST_STDP_RelativeInc;
+EffectiveWeights = State.ST_STDP_RelativeInc;
+
+% Calculating actual effective weights
+LastUpdatedTime = max(State.LSTSyn, State.LSTNeuron(InputStruct.NEnd));
+CurrTime = State.Time + 1; % we're looking at weight at end of iteration
+EffectiveWeights(LastUpdatedTime > -1) = EffectiveWeights(LastUpdatedTime > -1).*(InputStruct.ST_STDP_DecayWithTime.^single(CurrTime - LastUpdatedTime(LastUpdatedTime > -1)));
+
 EffectiveWeights(EffectiveWeights < -1) = -1;
-EffectiveWeights = Weights.*(1+EffectiveWeights);
+EffectiveWeights = State.Weight.*(1+EffectiveWeights);
 
 end
 
