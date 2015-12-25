@@ -15,12 +15,20 @@
 #endif
 
 #define SETQUOTE(A) #A
-#define JOIN_STRING(A,B,C) SETQUOTE(A##B##C)
-#define JOIN_LIB_PATH(PRE, CENT, POST) JOIN_STRING(PRE, CENT, POST)
 
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
+#define SETQUOTE_EXPAND(A) SETQUOTE(A)
+
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
 
 #include "MexFunctionInterface.cpp"
+
+#ifdef _MSC_VER
+#  define STRCAT_SAFE(a,b,c) strcat_s((a),(b),(c))
+#elif defined __GNUC__
+#  if (__GNUC__ > 5) || (__GNUC__ == 5)
+#    define STRCAT_SAFE(a,b,c) strncat((a),(c),(b))
+#  endif
+#endif
 
 using namespace std;
 
@@ -45,16 +53,16 @@ int main(){
 	Input = matGetVariable(InputFilePtr, "InputStruct");
 	
 	mxGetString_730(mxGetField(Input, 0, "OutputFile"), OutFileName, 256);
-	strcat_s(OutputFilePath, 256, "Data/");
-	strcat_s(OutputFilePath, 256, OutFileName);
+	STRCAT_SAFE(OutputFilePath, 256, "Data/");
+	STRCAT_SAFE(OutputFilePath, 256, OutFileName);
 
 	matClose(InputFilePtr);
 	if (Input == nullptr){
 		WriteException(ExOps::EXCEPTION_INVALID_INPUT, "The variable name in the mex file InputData must be InputStruct");
 	}
 	
-	mxArrayPtr lhs[4] = { nullptr, nullptr, nullptr, nullptr }, 
-			   rhs[1] = { Input };
+	mxArrayPtr lhs[4] = { nullptr, nullptr, nullptr, nullptr };
+	const mxArray* rhs[1] = { Input };
 
 	// Confirm Output File Rewrite
 	OutputFilePtr = matOpen(OutputFilePath, "r");
@@ -70,7 +78,11 @@ int main(){
 			matClose(OutputFilePtr);
 			OutputFilePtr = nullptr;
 			cout << "KTHXBYE" << endl;
-			system("pause");
+
+			std::cin.ignore(1024, '\n');
+			std::cout << "Press enter to terminate simulation...";
+			std::cin.get();
+
 			mxDestroyArray(Input);
 			return 0;
 		}
@@ -83,10 +95,14 @@ int main(){
 	catch (ExOps::ExCodes A){
 		if (A == ExOps::EXCEPTION_MEM_FULL){
 			printf("Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
-			system("pause");
+			std::cin.ignore(1024, '\n');
+			std::cout << "Press enter to terminate simulation...";
+			std::cin.get();
 		}
 		else {
-			system("pause");
+			std::cin.ignore(1024, '\n');
+			std::cout << "Press enter to terminate simulation...";
+			std::cin.get();
 		}
 		mxDestroyArray(Input);
 		return 0;
@@ -115,6 +131,8 @@ int main(){
 	// Close Memory Usage Account
 	MemCounter::CloseMemAccount(MemAccountKey);
 
-	system("pause");
+	std::cin.ignore(1024, '\n');
+	std::cout << "Press enter to end simulation...";
+	std::cin.get();
 	return 0;
 }
