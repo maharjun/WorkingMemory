@@ -9,25 +9,24 @@
 
 #include "Network.hpp"
 
-#include ".\IExtHeaders\IExtCode.hpp"
+#include "./IExtHeaders/IExtCode.hpp"
 
-#define SETQUOTE(A) #A
-#define JOIN_STRING(A,B,C) SETQUOTE(A##B##C)
-#define JOIN_LIB_PATH(PRE, CENT, POST) JOIN_STRING(PRE, CENT, POST)
+#define SETQUOTE(A) #A
+#define SETQUOTE_EXPAND(A) SETQUOTE(A)
 
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/GenericMexIO.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/LambdaToFunction.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/RandomNumGen/Headers/FiltRandomTBB.hpp)
 
-#include <xutility>
+#include <utility>
 #include <stdint.h>
 #include <vector>
 #include <cmath>
 #include <iostream>
-#include <tbb\atomic.h>
-#include <tbb\parallel_for.h>
+#include <tbb/atomic.h>
+#include <tbb/parallel_for.h>
 
 #include <emmintrin.h>
 #include <smmintrin.h>
@@ -323,7 +322,7 @@ struct InternalVars{
 		// Setting Initial Conditions for INTERNAL CURRENT 1
 		if (IArgs.InitialState.Iin1.size() == N){
 			for (int j = 0; j < N; ++j){
-				Iin1[j] = (long long int)(IArgs.InitialState.Iin1[j] * (1i64 << 32));
+				Iin1[j] = (long long int)(IArgs.InitialState.Iin1[j] * (1LL << 32));
 			}
 		}
 		else if (IArgs.InitialState.Iin1.size()){
@@ -337,7 +336,7 @@ struct InternalVars{
 		// Setting Initial Conditions for INTERNAL CURRENT 2
 		if (IArgs.InitialState.Iin2.size() == N){
 			for (int j = 0; j < N; ++j){
-				Iin2[j] = (long long int)(IArgs.InitialState.Iin2[j] * (1i64 << 32));
+				Iin2[j] = (long long int)(IArgs.InitialState.Iin2[j] * (1LL << 32));
 			}
 		}
 		else if (IArgs.InitialState.Iin2.size()){

@@ -1,5 +1,5 @@
-addpath('..\..\x64\Release_Lib\');
-addpath ..\..\MexMemoryInterfacing\MatlabSource\
+addpath('../../x64/Release_Lib/');
+addpath ../../MexMemoryInterfacing/MatlabSource/
 %%
 rng(25);
 N = 1000;

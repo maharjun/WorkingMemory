@@ -8,9 +8,9 @@
 #include <chrono>
 #include <type_traits>
 
-#include "..\Headers\NeuronSim.hpp"
+#include "../Headers/NeuronSim.hpp"
 
-#include "..\Headers\IExtHeaders\IExtCode.hpp"
+#include "../Headers/IExtHeaders/IExtCode.hpp"
 
 #if defined TIME_DEL_NET_SIM_AS_SUB
 	#define HEADER_PATHS_TDNS ..
@@ -19,23 +19,35 @@
 #endif
 
 #define SETQUOTE(A) #A
-#define JOIN_STRING(A,B,C) SETQUOTE(A##B##C)
-#define JOIN_LIB_PATH(PRE, CENT, POST) JOIN_STRING(PRE, CENT, POST)
 
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\InterruptHandling.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
+#define SETQUOTE_EXPAND(A) SETQUOTE(A)
+
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/GenericMexIO.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/InterruptHandling.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/LambdaToFunction.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp)
+
+#ifdef _MSC_VER
+#  define SPRINTF_FUNC sprintf_s
+#  define STRTOK_FUNC strtok_s
+#  define STRCMPI_FUNC _strcmpi
+#elif defined __GNUC__
+#  if (__GNUC__ > 5) || (__GNUC__ == 5)
+#    define SPRINTF_FUNC std::snprintf
+#    define STRTOK_FUNC strtok_r
+#    define STRCMPI_FUNC strcasecmp
+#  endif
+#endif
 
 using namespace std;
 
 int getOutputControl(char* OutputControlSequence){
 	char * SequenceWord;
 	char * NextNonDelim = NULL;
-	char * Delims = " -,";
+	const char * Delims = " -,";
 	int OutputControl = 0x00000000;
-	SequenceWord = strtok_s(OutputControlSequence, Delims, &NextNonDelim);
+	SequenceWord = STRTOK_FUNC(OutputControlSequence, Delims, &NextNonDelim);
 	bool AddorRemove; // TRUE for ADD
 	while (SequenceWord != NULL) {
 		AddorRemove = true;
@@ -43,16 +55,16 @@ int getOutputControl(char* OutputControlSequence){
 			AddorRemove = false;
 			SequenceWord++;
 		}
-		if (!_strcmpi(SequenceWord, "Initial"))
+		if (!STRCMPI_FUNC(SequenceWord, "Initial"))
 			OutputControl |= OutOps::INITIAL_STATE_REQ;
-		if (AddorRemove && !_strcmpi(SequenceWord, "VCF"))
+		if (AddorRemove && !STRCMPI_FUNC(SequenceWord, "VCF"))
 			OutputControl |= OutOps::V_REQ | OutOps::U_REQ | OutOps::I_TOT_REQ
 		                   | OutOps::FINAL_STATE_REQ;
-		if (AddorRemove && !_strcmpi(SequenceWord, "VCWF"))
+		if (AddorRemove && !STRCMPI_FUNC(SequenceWord, "VCWF"))
 			OutputControl |= OutOps::V_REQ | OutOps::U_REQ | OutOps::I_TOT_REQ 
 			               | OutOps::WEIGHT_REQ
 			               | OutOps::FINAL_STATE_REQ;
-		if (AddorRemove && !_strcmpi(SequenceWord, "FSF"))
+		if (AddorRemove && !STRCMPI_FUNC(SequenceWord, "FSF"))
 			OutputControl |= OutOps::V_REQ | OutOps::U_REQ 
 						   | OutOps::I_IN_1_REQ | OutOps::I_IN_2_REQ
 						   | OutOps::WEIGHT_DERIV_REQ 
@@ -62,68 +74,68 @@ int getOutputControl(char* OutputControlSequence){
 						   | OutOps::LASTSPIKED_NEU_REQ
 						   | OutOps::LASTSPIKED_SYN_REQ
 						   | OutOps::FINAL_STATE_REQ;
-		if (!_strcmpi(SequenceWord, "V"))
+		if (!STRCMPI_FUNC(SequenceWord, "V"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::V_REQ : 
 					 OutputControl & ~(OutOps::V_REQ);
-		if (!_strcmpi(SequenceWord, "U"))
+		if (!STRCMPI_FUNC(SequenceWord, "U"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::U_REQ : 
 					 OutputControl & ~(OutOps::U_REQ);
-		if (!_strcmpi(SequenceWord, "Iin1"))
+		if (!STRCMPI_FUNC(SequenceWord, "Iin1"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_IN_1_REQ : 
 					 OutputControl & ~(OutOps::I_IN_1_REQ);
-		if (!_strcmpi(SequenceWord, "Iin2"))
+		if (!STRCMPI_FUNC(SequenceWord, "Iin2"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_IN_2_REQ : 
 					 OutputControl & ~(OutOps::I_IN_2_REQ);
-		if (!_strcmpi(SequenceWord, "WeightDeriv"))
+		if (!STRCMPI_FUNC(SequenceWord, "WeightDeriv"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::WEIGHT_DERIV_REQ : 
 					 OutputControl & ~(OutOps::WEIGHT_DERIV_REQ);
-		if (!_strcmpi(SequenceWord, "Weight"))
+		if (!STRCMPI_FUNC(SequenceWord, "Weight"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::WEIGHT_REQ : 
 					 OutputControl & ~(OutOps::WEIGHT_REQ);
-		if (!_strcmpi(SequenceWord, "CurrentQInds"))
+		if (!STRCMPI_FUNC(SequenceWord, "CurrentQInds"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::CURRENT_QINDS_REQ : 
 					 OutputControl & ~(OutOps::CURRENT_QINDS_REQ);
-		if (!_strcmpi(SequenceWord, "SpikeQueue"))
+		if (!STRCMPI_FUNC(SequenceWord, "SpikeQueue"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::SPIKE_QUEUE_REQ : 
 					 OutputControl & ~(OutOps::SPIKE_QUEUE_REQ);
-		if (!_strcmpi(SequenceWord, "LSTNeuron"))
+		if (!STRCMPI_FUNC(SequenceWord, "LSTNeuron"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::LASTSPIKED_NEU_REQ : 
 					 OutputControl & ~(OutOps::LASTSPIKED_NEU_REQ);
-		if (!_strcmpi(SequenceWord, "LSTSyn"))
+		if (!STRCMPI_FUNC(SequenceWord, "LSTSyn"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::LASTSPIKED_SYN_REQ : 
 					 OutputControl & ~(OutOps::LASTSPIKED_SYN_REQ);
-		if (!_strcmpi(SequenceWord, "Iin"))
+		if (!STRCMPI_FUNC(SequenceWord, "Iin"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_IN_REQ : 
 					 OutputControl & ~(OutOps::I_IN_REQ);
-		if (!_strcmpi(SequenceWord, "Itot"))
+		if (!STRCMPI_FUNC(SequenceWord, "Itot"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::I_TOT_REQ : 
 					 OutputControl & ~(OutOps::I_TOT_REQ);
-		if (!_strcmpi(SequenceWord, "SpikeList"))
+		if (!STRCMPI_FUNC(SequenceWord, "SpikeList"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::SPIKE_LIST_REQ : 
 					 OutputControl & ~(OutOps::SPIKE_LIST_REQ);
-		if (!_strcmpi(SequenceWord, "Final"))
+		if (!STRCMPI_FUNC(SequenceWord, "Final"))
 			OutputControl = AddorRemove ? 
 			         OutputControl | OutOps::FINAL_STATE_REQ : 
 					 OutputControl & ~(OutOps::FINAL_STATE_REQ);
-		SequenceWord = strtok_s(NULL, Delims, &NextNonDelim);
+		SequenceWord = STRTOK_FUNC(NULL, Delims, &NextNonDelim);
 	}
 	return OutputControl;
 }
 
-void takeInputFromMatlabStruct(mxArray* MatlabInputStruct, InputArgs &InputArgList){
+void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &InputArgList){
 
 	// Initializing N, M Ensuring that "a" and "NStart" Fields are present
 	size_t N = mxGetNumberOfElements(getValidStructField(MatlabInputStruct, "a", MexMemInputOps(true)));
@@ -450,7 +462,8 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 	return ReturnPointer;
 }
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
+
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]){
 	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
 	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
 
@@ -482,7 +495,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 		if (A == ExOps::EXCEPTION_MEM_FULL){
 		#ifdef MEX_LIB
 			char OutputString[256];
-			sprintf_s(OutputString, 256, "Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
+			SPRINTF_FUNC(OutputString, 256, "Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
 			mexErrMsgIdAndTxt("CppSimException:MemOverFlow", OutputString);
 		#elif defined MEX_EXE
 			throw A;
@@ -505,4 +518,4 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[]){
 
 	// Close Memory Usage Account
 	MemCounter::CloseMemAccount(MemAccountKey);
-}
+}	

@@ -1,8 +1,8 @@
 #include <vector>
 #include <iostream>
-#include <tbb\parallel_for.h>
-#include <tbb\blocked_range.h>
-#include <tbb\atomic.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+#include <tbb/atomic.h>
 #include <fstream>
 #include <chrono>
 #include <cmath>
@@ -14,21 +14,21 @@
 #endif
 
 #define SETQUOTE(A) #A
-#define JOIN_STRING(A,B,C) SETQUOTE(A##B##C)
-#define JOIN_LIB_PATH(PRE, CENT, POST) JOIN_STRING(PRE, CENT, POST)
 
-#include "..\Headers\Network.hpp"
-#include "..\Headers\NeuronSim.hpp"
+#define SETQUOTE_EXPAND(A) SETQUOTE(A)
 
-#include "..\Headers\IExtHeaders\IExtCode.hpp"
+#include "../Headers/Network.hpp"
+#include "../Headers/NeuronSim.hpp"
 
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\InterruptHandling.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
+#include "../Headers/IExtHeaders/IExtCode.hpp"
 
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/GenericMexIO.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/InterruptHandling.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/LambdaToFunction.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp)
+
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/RandomNumGen/Headers/FiltRandomTBB.hpp)
 
 #include <emmintrin.h>
 #include <smmintrin.h>
@@ -73,13 +73,10 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 	for (int * iter = begin; iter < end; ++iter){
 		Synapse CurrentSynapse = Network[*iter];
 		int CurrentSynapseInd = *iter;
-		__m128 AddedCurrent;
-		AddedCurrent.m128_u64[0] = 0; AddedCurrent.m128_u64[1] = 0;
-		AddedCurrent.m128_f32[0] = CurrentSynapse.Weight;
-		AddedCurrent.m128_u32[0] += (32 << 23);
 
-		Iin1[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
-		Iin2[CurrentSynapse.NEnd - 1].fetch_and_add((long long)AddedCurrent.m128_f32[0]);
+		long long int AddedCurrentLL = (long long int)(CurrentSynapse.Weight * (1LL<<32));
+		Iin1[CurrentSynapse.NEnd - 1].fetch_and_add(AddedCurrentLL);
+		Iin2[CurrentSynapse.NEnd - 1].fetch_and_add(AddedCurrentLL);
 		LastSpikedTimeSyn[CurrentSynapseInd] = time;
 	}
 }
@@ -115,7 +112,7 @@ void NeuronSimulate::operator() (tbb::blocked_range<int> &Range) const{
 		else{
 			//Implementing Izhikevich differential equation
 			float Vnew, Unew;
-			Vnew = Vnow[j] + (Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32) + Iext[j]) / onemsbyTstep;
+			Vnew = Vnow[j] + (Vnow[j] * (0.04f*Vnow[j] + 5.0f) + 140.0f - Unow[j] + (float)(Iin2[j] - Iin1[j]) / (1LL << 32) + Iext[j]) / onemsbyTstep;
 			Unew = Unow[j] + (Neurons[j].a*(Neurons[j].b*Vnow[j] - Unow[j])) / onemsbyTstep;
 			Vnow[j] = (Vnew > -100)? Vnew: -100;
 			Unow[j] = Unew;
@@ -253,12 +250,12 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 		if (OutputControl & OutOps::I_IN_1_REQ) {
 			StateOut.Iin1Out.push_row_size(1);
 			for (int j = 0; j < N; ++j)
-				StateOut.Iin1Out.lastRow()[j] = (float)Iin1[j] / (1i64 << 32);
+				StateOut.Iin1Out.lastRow()[j] = (float)Iin1[j] / (1LL << 32);
 		}
 		if (OutputControl & OutOps::I_IN_2_REQ) {
 			StateOut.Iin2Out.push_row_size(1);
 			for (int j = 0; j < N; ++j)
-				StateOut.Iin2Out.lastRow()[j] = (float)Iin2[j] / (1i64 << 32);
+				StateOut.Iin2Out.lastRow()[j] = (float)Iin2[j] / (1LL << 32);
 		}
 
 		//Storing Weight Derivative
@@ -305,14 +302,14 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 		if (OutputControl & OutOps::I_IN_REQ) {
 			OutVars.Iin.push_row_size(1);
 			for (int j = 0; j < N; ++j)
-				OutVars.Iin.lastRow()[j] = (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
+				OutVars.Iin.lastRow()[j] = (float)(Iin2[j] - Iin1[j]) / (1LL << 32);
 		}
 
 		// Storing Itot
 		if (OutputControl & OutOps::I_TOT_REQ) {
 			OutVars.Itot.push_row_size(1);
 			for (int j = 0; j < N; ++j)
-				OutVars.Itot.lastRow()[j] = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1i64 << 32);
+				OutVars.Itot.lastRow()[j] = this->IextInterface.Iext[j] + (float)(Iin2[j] - Iin1[j]) / (1LL << 32);
 		}
 
 		// Storing NoOfSpikes
@@ -344,8 +341,8 @@ void InternalVars::DoOutput(StateVarsOutStruct &StateOut, OutputVarsStruct &OutV
 void InternalVars::DoSingleStateOutput(SingleStateStruct &SingleStateOut){
 	size_t QueueSize = onemsbyTstep * DelayRange;
 	for (int j = 0; j < N; ++j){
-		SingleStateOut.Iin1[j] = (float)Iin1[j] / (1i64 << 32);
-		SingleStateOut.Iin2[j] = (float)Iin2[j] / (1i64 << 32);
+		SingleStateOut.Iin1[j] = (float)Iin1[j] / (1LL << 32);
+		SingleStateOut.Iin2[j] = (float)Iin2[j] / (1LL << 32);
 	}
 	// Storing IextInterface related state vars
 	IExtInterface::doSingleStateOutput(
