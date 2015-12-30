@@ -1,7 +1,7 @@
-rmpath('..\..\x64\Debug_Lib');
-addpath('..\..\x64\Release_Lib');
+rmpath('../../x64/Debug_Lib');
+addpath('../../x64/Release_Lib');
 % addpath('export_fig-master');
-addpath ..\..\MexMemoryInterfacing\MatlabSource\
+addpath ../../MexMemoryInterfacing/MatlabSource/
 
 %%
 rng('default');
