@@ -9,25 +9,25 @@
 
 #include "Network.hpp"
 
-#include ".\IExtHeaders\IExtCode.hpp"
+#include "./IExtHeaders/IExtCode.hpp"
 
 #define SETQUOTE(A) #A
-#define JOIN_STRING(A,B,C) SETQUOTE(A##B##C)
-#define JOIN_LIB_PATH(PRE, CENT, POST) JOIN_STRING(PRE, CENT, POST)
 
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\MexMem.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\GenericMexIO.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\LambdaToFunction.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \MexMemoryInterfacing\Headers\FlatVectTree\FlatVectTree.hpp)
-#include JOIN_LIB_PATH(..\..\, HEADER_PATHS_TDNS, \RandomNumGen\Headers\FiltRandomTBB.hpp)
+#define SETQUOTE_EXPAND(A) SETQUOTE(A)
 
-#include <xutility>
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/GenericMexIO.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/LambdaToFunction.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp)
+#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/RandomNumGen/Headers/FiltRandomTBB.hpp)
+
+#include <utility>
 #include <stdint.h>
 #include <vector>
 #include <cmath>
 #include <iostream>
-#include <tbb\atomic.h>
-#include <tbb\parallel_for.h>
+#include <tbb/atomic.h>
+#include <tbb/parallel_for.h>
 
 #include <emmintrin.h>
 #include <smmintrin.h>
@@ -376,7 +376,7 @@ struct InternalVars{
 		// Setting Initial Conditions for INTERNAL CURRENT
 		if (IArgs.InitialState.Iin.size() == N){
 			for (int j = 0; j < N; ++j){
-				Iin[j] = (long long int)(IArgs.InitialState.Iin[j] * (1i64 << 32));
+				Iin[j] = (long long int)(IArgs.InitialState.Iin[j] * (1LL << 32));
 			}
 		}
 		else if (IArgs.InitialState.Iin.size()){
