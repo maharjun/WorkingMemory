@@ -11,7 +11,8 @@
 
 #include "./IExtHeaders/IExtCode.hpp"
 
-#define SETQUOTE(A) #A
+#define SETQUOTE(A) #A
+
 #define SETQUOTE_EXPAND(A) SETQUOTE(A)
 
 #include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
@@ -56,8 +57,8 @@ struct OutOps{
 	};
 };
 
-typedef vector<tbb::atomic<long long>, tbb::zero_allocator<long long> > atomicLongVect;
-typedef vector<tbb::atomic<int>, tbb::zero_allocator<int> > atomicIntVect;
+typedef vector<tbb::atomic<int64_t>, tbb::zero_allocator<int64_t> > atomicLongVect;
+typedef vector<tbb::atomic<int32_t>, tbb::zero_allocator<int32_t> > atomicIntVect;
 
 // Incomplete declarations
 struct InputArgs;
@@ -72,7 +73,7 @@ struct CurrentUpdate
 
 	CurrentUpdate(InternalVars &IntVars_) :
 		IntVars(IntVars_){};
-	void operator() (const tbb::blocked_range<int*> &BlockedRange) const;
+	void operator() (const tbb::blocked_range<int32_t*> &BlockedRange) const;
 };
 struct NeuronSimulate{
 	InternalVars &IntVars;
@@ -106,11 +107,11 @@ struct SingleStateStruct{
 	// IextInterface state variable component
 	IExtInterface::SingleStateStruct IextInterface;
 
-	FlatVectTree<int> SpikeQueue;
-	MexVector<int> LSTNeuron;
-	MexVector<int> LSTSyn;
-	int Time;
-	int CurrentQIndex;
+	FlatVectTree<int32_t> SpikeQueue;
+	MexVector<int32_t> LSTNeuron;
+	MexVector<int32_t> LSTSyn;
+	int32_t Time;
+	int32_t CurrentQIndex;
 
 	SingleStateStruct() :
 		Weight(),
@@ -128,8 +129,8 @@ struct SingleStateStruct{
 };
 
 struct InputArgs{
-	MexVector<int>   NStart;
-	MexVector<int>   NEnd;
+	MexVector<int32_t>   NStart;
+	MexVector<int32_t>   NEnd;
 	MexVector<float> Weight;
 	MexVector<float> Delay;
 	
@@ -138,7 +139,7 @@ struct InputArgs{
 	MexVector<float> c;
 	MexVector<float> d;
 
-	MexVector<int> InterestingSyns;
+	MexVector<int32_t> InterestingSyns;
 
 	// IExt Interface Input Variables
 	IExtInterface::InputVarsStruct IextInterface;
@@ -211,7 +212,7 @@ struct InternalVars{
 
 	MexVector<Synapse> Network;
 	MexVector<Neuron> Neurons;
-	MexVector<int> &InterestingSyns;
+	MexVector<int32_t> &InterestingSyns;
 	MexVector<float> &V;
 	MexVector<float> &U;
 	atomicLongVect Iin1;
@@ -219,9 +220,9 @@ struct InternalVars{
 	MexVector<float> WeightDeriv;
 	IExtInterface::InternalVarsStruct IextInterface;
 
-	MexVector<MexVector<int> > SpikeQueue;
-	MexVector<int> &LSTNeuron;
-	MexVector<int> &LSTSyn;
+	MexVector<MexVector<int32_t> > SpikeQueue;
+	MexVector<int32_t> &LSTNeuron;
+	MexVector<int32_t> &LSTSyn;
 
 	MexVector<size_t> AuxArray;						    // Auxillary Array that is an indirection between Network
 													    // and an array sorted lexicographically by (NEnd, NStart)
@@ -240,8 +241,8 @@ struct InternalVars{
 	// These vectors are instrumental in the Cache aligned 
 	// implementation of Spike Storage
 	MexVector<__m128i> BinningBuffer;	//each element is 16 bytes
-	MexVector<int> BufferInsertIndex;
-	MexVector<int> AddressOffset;
+	MexVector<int32_t> BufferInsertIndex;
+	MexVector<int32_t> AddressOffset;
 
 	InternalVars(InputArgs &IArgs) :
 		N                     (IArgs.a.size()),
@@ -286,10 +287,10 @@ struct InternalVars{
 		CurrentDecayFactor2(IArgs.CurrentDecayFactor2){
 		// Setting up Network and Neurons
 		Network.resize(M);
-		MexTransform(IArgs.NStart.begin(), IArgs.NStart.end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NStart)->void{Syn.NStart        = NStart       ; }));
-		MexTransform(IArgs.NEnd  .begin(), IArgs.NEnd  .end(), Network.begin(), FFL([ ](Synapse &Syn, int   &NEnd  )->void{Syn.NEnd          = NEnd         ; }));
-		MexTransform(IArgs.Weight.begin(), IArgs.Weight.end(), Network.begin(), FFL([ ](Synapse &Syn, float &Weight)->void{Syn.Weight        = Weight       ; }));
-		MexTransform(IArgs.Delay .begin(), IArgs.Delay .end(), Network.begin(), FFL([&](Synapse &Syn, float &Delay )->void{Syn.DelayinTsteps = Delay*IArgs.onemsbyTstep + 0.5f; }));
+		MexTransform(IArgs.NStart.begin(), IArgs.NStart.end(), Network.begin(), FFL([ ](Synapse &Syn, int32_t &NStart)->void{Syn.NStart        = NStart       ; }));
+		MexTransform(IArgs.NEnd  .begin(), IArgs.NEnd  .end(), Network.begin(), FFL([ ](Synapse &Syn, int32_t &NEnd  )->void{Syn.NEnd          = NEnd         ; }));
+		MexTransform(IArgs.Weight.begin(), IArgs.Weight.end(), Network.begin(), FFL([ ](Synapse &Syn, float   &Weight)->void{Syn.Weight        = Weight       ; }));
+		MexTransform(IArgs.Delay .begin(), IArgs.Delay .end(), Network.begin(), FFL([&](Synapse &Syn, float   &Delay )->void{Syn.DelayinTsteps = Delay*IArgs.onemsbyTstep + 0.5f; }));
 
 		Neurons.resize(N);
 		MexTransform(IArgs.a.begin(), IArgs.a.end(), Neurons.begin(), FFL([](Neuron &Neu, float &a)->void{Neu.a = a; }));
@@ -322,7 +323,7 @@ struct InternalVars{
 		// Setting Initial Conditions for INTERNAL CURRENT 1
 		if (IArgs.InitialState.Iin1.size() == N){
 			for (int j = 0; j < N; ++j){
-				Iin1[j] = (long long int)(IArgs.InitialState.Iin1[j] * (1LL << 32));
+				Iin1[j] = (int64_t)(IArgs.InitialState.Iin1[j] * (1LL << 32));
 			}
 		}
 		else if (IArgs.InitialState.Iin1.size()){
@@ -330,13 +331,13 @@ struct InternalVars{
 			return;
 		}
 		//else{
-		//	Iin1 is already initialized to zero by tbb::zero_allocator<long long>
+		//	Iin1 is already initialized to zero by tbb::zero_allocator<int64_t>
 		//}
 
 		// Setting Initial Conditions for INTERNAL CURRENT 2
 		if (IArgs.InitialState.Iin2.size() == N){
 			for (int j = 0; j < N; ++j){
-				Iin2[j] = (long long int)(IArgs.InitialState.Iin2[j] * (1LL << 32));
+				Iin2[j] = (int64_t)(IArgs.InitialState.Iin2[j] * (1LL << 32));
 			}
 		}
 		else if (IArgs.InitialState.Iin2.size()){
@@ -344,7 +345,7 @@ struct InternalVars{
 			return;
 		}
 		//else{
-		//	Iin2 is already initialized to zero by tbb::zero_allocator<long long>
+		//	Iin2 is already initialized to zero by tbb::zero_allocator<int64_t>
 		//}
 
 		// Setting Initial Conditions for Weight Derivative
@@ -372,7 +373,7 @@ struct InternalVars{
 		
 		// Setting Initial Conditions of SpikeQueue
 		if (IArgs.InitialState.SpikeQueue.istrulyempty()){
-			SpikeQueue = MexVector<MexVector<int> >(onemsbyTstep * DelayRange, MexVector<int>());
+			SpikeQueue = MexVector<MexVector<int32_t> >(onemsbyTstep * DelayRange, MexVector<int32_t>());
 		}
 		else if (IArgs.InitialState.SpikeQueue.depth() == 1 && IArgs.InitialState.SpikeQueue.LevelSize(0) == onemsbyTstep*DelayRange) {
 			IArgs.InitialState.SpikeQueue.getVectTree(SpikeQueue);
@@ -384,14 +385,14 @@ struct InternalVars{
 
 		// Setting Initial Conditions for LSTs
 		if (LSTNeuron.istrulyempty()){
-			LSTNeuron = MexVector<int>(N, -1);
+			LSTNeuron = MexVector<int32_t>(N, -1);
 		}
 		else if (LSTNeuron.size() != N){
 			//GIVE ERROR MESSAGE HERE
 			return;
 		}
 		if (LSTSyn.istrulyempty()){
-			LSTSyn = MexVector<int>(M, -1);
+			LSTSyn = MexVector<int32_t>(M, -1);
 		}
 		else if (LSTSyn.size() != M){
 			//GIVE ERROR MESSAGE HERE
@@ -410,9 +411,9 @@ struct OutputVarsStruct{
 	MexVector<uint64_t> NoOfSpikes;
 	IExtInterface::OutputVarsStruct IextInterface;
 	struct SpikeListStruct{
-		MexVector<int> SpikeSynInds;
-		MexVector<int> TimeRchdStartInds;
-		MexVector<int> TimeRchd;
+		MexVector<int32_t> SpikeSynInds;
+		MexVector<int32_t> TimeRchdStartInds;
+		MexVector<int32_t> TimeRchd;
 		SpikeListStruct() : SpikeSynInds(), TimeRchdStartInds(), TimeRchd() {}
 	} SpikeList;
 
@@ -436,11 +437,11 @@ struct StateVarsOutStruct{
 	MexMatrix<float> WeightDerivOut;
 	IExtInterface::StateOutStruct IextInterface;
 
-	MexVector<int> TimeOut;
-	FlatVectTree<int> SpikeQueueOut;
-	MexVector<int> CurrentQIndexOut;
-	MexMatrix<int> LSTNeuronOut;
-	MexMatrix<int> LSTSynOut;
+	MexVector<int32_t> TimeOut;
+	FlatVectTree<int32_t> SpikeQueueOut;
+	MexVector<int32_t> CurrentQIndexOut;
+	MexMatrix<int32_t> LSTNeuronOut;
+	MexMatrix<int32_t> LSTSynOut;
 
 	StateVarsOutStruct() :
 		WeightOut(),
@@ -460,7 +461,7 @@ struct StateVarsOutStruct{
 };
 
 
-void CountingSort(int N, MexVector<Synapse> &Network, MexVector<int> &indirection);
+void CountingSort(int N, MexVector<Synapse> &Network, MexVector<int32_t> &indirection);
 
 void SimulateParallel(
 	InputArgs &&InputArguments,

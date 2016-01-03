@@ -60,7 +60,7 @@ void CountingSort(int N, MexVector<Synapse> &Network, MexVector<size_t> &indirec
 	}
 }
 
-void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) const{
+void CurrentUpdate::operator () (const tbb::blocked_range<int32_t*> &BlockedRange) const{
 	const float &I0 = IntVars.I0;
 	auto &Network           = IntVars.Network;
 	auto &Iin1              = IntVars.Iin1;
@@ -68,13 +68,13 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int*> &BlockedRange) c
 	auto &LastSpikedTimeSyn = IntVars.LSTSyn;
 	auto &time              = IntVars.Time;
 
-	int *begin = BlockedRange.begin();
-	int *end = BlockedRange.end();
-	for (int * iter = begin; iter < end; ++iter){
+	int32_t *begin = BlockedRange.begin();
+	int32_t *end = BlockedRange.end();
+	for (int32_t * iter = begin; iter < end; ++iter){
 		Synapse CurrentSynapse = Network[*iter];
 		int CurrentSynapseInd = *iter;
 
-		long long int AddedCurrentLL = (long long int)(CurrentSynapse.Weight * (1LL<<32));
+		int64_t AddedCurrentLL = (int64_t)(CurrentSynapse.Weight * (1LL<<32));
 		Iin1[CurrentSynapse.NEnd - 1].fetch_and_add(AddedCurrentLL);
 		Iin2[CurrentSynapse.NEnd - 1].fetch_and_add(AddedCurrentLL);
 		LastSpikedTimeSyn[CurrentSynapseInd] = time;
@@ -134,14 +134,14 @@ void CurrentAttenuate::operator() (tbb::blocked_range<int> &Range) const {
 	auto &attenFactor1 = IntVars.CurrentDecayFactor1;
 	auto &attenFactor2 = IntVars.CurrentDecayFactor2;
 
-	tbb::atomic<long long> *Begin1 = &Iin1[Range.begin()];
-	tbb::atomic<long long> *End1 = &Iin1[Range.end()-1] + 1;
-	tbb::atomic<long long> *Begin2 = &Iin2[Range.begin()];
-	tbb::atomic<long long> *End2 = &Iin2[Range.end() - 1] + 1;
+	tbb::atomic<int64_t> *Begin1 = &Iin1[Range.begin()];
+	tbb::atomic<int64_t> *End1 = &Iin1[Range.end()-1] + 1;
+	tbb::atomic<int64_t> *Begin2 = &Iin2[Range.begin()];
+	tbb::atomic<int64_t> *End2 = &Iin2[Range.end() - 1] + 1;
 
-	for (tbb::atomic<long long> *i = Begin1, *j = Begin2; i < End1; ++i, ++j){
-		(*i) = (long long)(float(i->load()) * attenFactor1);
-		(*j) = (long long)(float(j->load()) * attenFactor2);
+	for (tbb::atomic<int64_t> *i = Begin1, *j = Begin2; i < End1; ++i, ++j){
+		(*i) = (int64_t)(float(i->load()) * attenFactor1);
+		(*j) = (int64_t)(float(j->load()) * attenFactor2);
 	}
 }
 
@@ -178,19 +178,19 @@ void StateVarsOutStruct::initialize(const InternalVars &IntVars) {
 
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 
-	this->TimeOut = MexVector<int>(0);
+	this->TimeOut = MexVector<int32_t>(0);
 
 	if (OutputControl & OutOps::LASTSPIKED_NEU_REQ)
-		this->LSTNeuronOut = MexMatrix<int>(0, N);
+		this->LSTNeuronOut = MexMatrix<int32_t>(0, N);
 
 	if (OutputControl & OutOps::LASTSPIKED_SYN_REQ)
-		this->LSTSynOut = MexMatrix<int>(0, M);
+		this->LSTSynOut = MexMatrix<int32_t>(0, M);
 
 	if (OutputControl & OutOps::SPIKE_QUEUE_REQ)
-		this->SpikeQueueOut = FlatVectTree<int>(2);
+		this->SpikeQueueOut = FlatVectTree<int32_t>(2);
 
 	if (OutputControl & OutOps::CURRENT_QINDS_REQ)
-		this->CurrentQIndexOut = MexVector<int>(0);
+		this->CurrentQIndexOut = MexVector<int32_t>(0);
 }
 void OutputVarsStruct::initialize(const InternalVars &IntVars){
 	size_t TimeDimLen;
@@ -232,9 +232,9 @@ void SingleStateStruct::initialize(const InternalVars &IntVars){
 	this->WeightDeriv = MexVector<float>(M);
 	this->IextInterface.initialize(IntVars.IextInterface, IntVars);
 	this->Weight = MexVector<float>(M);
-	this->LSTNeuron = MexVector<int>(N);
-	this->LSTSyn = MexVector<int>(M);
-	this->SpikeQueue = FlatVectTree<int>(1);
+	this->LSTNeuron = MexVector<int32_t>(N);
+	this->LSTSyn = MexVector<int32_t>(M);
+	this->SpikeQueue = FlatVectTree<int32_t>(1);
 	this->CurrentQIndex = -1;
 	this->Time = -1;
 }
@@ -371,10 +371,10 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.Weight.resize(M);
 	InputStateOut.Delay .resize(M);
 	
-	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart.begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NStart       ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd  .begin(), FFL([ ](Synapse &Syn)->int  {return Syn.NEnd         ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.Weight.begin(), FFL([ ](Synapse &Syn)->float{return Syn.Weight       ; }));
-	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay .begin(), FFL([&](Synapse &Syn)->float{return (float)Syn.DelayinTsteps / onemsbyTstep; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NStart.begin(), FFL([ ](Synapse &Syn)->int32_t{return Syn.NStart       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.NEnd  .begin(), FFL([ ](Synapse &Syn)->int32_t{return Syn.NEnd         ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.Weight.begin(), FFL([ ](Synapse &Syn)->float  {return Syn.Weight       ; }));
+	MexTransform(Network.begin(), Network.end(), InputStateOut.Delay .begin(), FFL([&](Synapse &Syn)->float  {return (float)Syn.DelayinTsteps / onemsbyTstep; }));
 
 	InputStateOut.a.resize(N);
 	InputStateOut.b.resize(N);
@@ -527,16 +527,16 @@ void SimulateParallel(
 	InternalVars IntVars(InputArguments);
 
 	// Aliasing of Data members in IntVar
-	MexVector<Synapse>			&Network              = IntVars.Network;
-	MexVector<Neuron>			&Neurons              = IntVars.Neurons;
-	MexVector<float>			&Vnow                 = IntVars.V;
-	MexVector<float>			&Unow                 = IntVars.U;
-	MexVector<int>				&InterestingSyns      = IntVars.InterestingSyns;
-	atomicLongVect				&Iin1                 = IntVars.Iin1;
-	atomicLongVect				&Iin2                 = IntVars.Iin2;
-	MexVector<MexVector<int> >	&SpikeQueue           = IntVars.SpikeQueue;
-	MexVector<int>				&LastSpikedTimeNeuron = IntVars.LSTNeuron;
-	MexVector<int>				&LastSpikedTimeSyn    = IntVars.LSTSyn;
+	MexVector<Synapse>			   &Network              = IntVars.Network;
+	MexVector<Neuron>			   &Neurons              = IntVars.Neurons;
+	MexVector<float>			   &Vnow                 = IntVars.V;
+	MexVector<float>			   &Unow                 = IntVars.U;
+	MexVector<int32_t>			   &InterestingSyns      = IntVars.InterestingSyns;
+	atomicLongVect				   &Iin1                 = IntVars.Iin1;
+	atomicLongVect				   &Iin2                 = IntVars.Iin2;
+	MexVector<MexVector<int32_t> > &SpikeQueue           = IntVars.SpikeQueue;
+	MexVector<int32_t>			   &LastSpikedTimeNeuron = IntVars.LSTNeuron;
+	MexVector<int32_t>			   &LastSpikedTimeSyn    = IntVars.LSTSyn;
 	
 
 	size_t &NoOfms              = IntVars.NoOfms;
@@ -701,8 +701,8 @@ void SimulateParallel(
 		IUpdateTimeBeg = std::chrono::system_clock::now();
 		// This iter calculates Itemp as in above diagram
 		if (SpikeQueue[CurrentQueueIndex].size() != 0)
-			tbb::parallel_for(tbb::blocked_range<int*>((int*)&SpikeQueue[CurrentQueueIndex][0],
-				(int*)&SpikeQueue[CurrentQueueIndex][QueueSubEnd - 1] + 1, 10000), 
+			tbb::parallel_for(tbb::blocked_range<int32_t*>((int32_t*)&SpikeQueue[CurrentQueueIndex][0],
+				(int32_t*)&SpikeQueue[CurrentQueueIndex][QueueSubEnd - 1] + 1, 10000),
 				CurrentUpdate(IntVars), apCurrentUpdate);
 		SpikeQueue[CurrentQueueIndex].clear();
 		IUpdateTimeEnd = std::chrono::system_clock::now();
