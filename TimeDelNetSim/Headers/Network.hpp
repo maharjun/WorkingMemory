@@ -1,10 +1,11 @@
 #ifndef NETWORK_H
 #define NETWORK_H
+#include <cstdint>
 struct Synapse{
-	int		NStart;
-	int		NEnd;
+	int32_t NStart;
+	int32_t NEnd;
 	float	Weight;
-	int	DelayinTsteps;
+	int32_t	DelayinTsteps;
 };
 
 struct Neuron{
