@@ -33,8 +33,6 @@
 using namespace std;
 
 int main(){
-	// NOTE THAT THERE IS NO DATA VALIDATION AS THIS IS EXPECTED TO HAVE 
-	// BEEN DONE IN THE MATLAB SIDE OF THE INTERFACE TO THIS MEX FUNCTION
 
 	// Open Memory Usage Account
 	size_t MemAccountKey =  MemCounter::OpenMemAccount(size_t(4) << 29);
@@ -90,21 +88,30 @@ int main(){
 
 	// Execute Simulation via the Mex Interface
 	try{
-		mexFunction(4, lhs, 1, rhs);
+		mexFunctionCpp(4, lhs, 1, rhs);
 	}
 	catch (ExOps::ExCodes A){
 		if (A == ExOps::EXCEPTION_MEM_FULL){
-			printf("Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
-			std::cin.ignore(1024, '\n');
-			std::cout << "Press enter to terminate simulation...";
-			std::cin.get();
+			WriteOutput("Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
 		}
-		else {
-			std::cin.ignore(1024, '\n');
-			std::cout << "Press enter to terminate simulation...";
-			std::cin.get();
+		else if (A == ExOps::EXCEPTION_INVALID_INPUT) {
+			// Do nothing. Everything to be done is done prior to the throwing 
+			// of the exception
 		}
+		else if (A == ExOps::EXCEPTION_CONST_MOD || A == ExOps::EXCEPTION_EXTMEM_MOD) {
+			WriteOutput("Invalid Modification of %s Memory\n", ((A == ExOps::EXCEPTION_CONST_MOD) ? "const" : "external"));
+		}
+
 		mxDestroyArray(Input);
+		for (int j = 0; j < 4; ++j) {
+			if (lhs[j] != nullptr)
+				mxDestroyArray(lhs[j]);
+		}
+
+		std::cin.ignore(1024, '\n');
+		std::cout << "Press enter to terminate simulation...";
+		std::cin.get();
+
 		return 0;
 	}
 	
