@@ -230,7 +230,7 @@ FinalStateSparse = FinalState;
 clear OutputVars StateVars InputState FinalState;
 
 %% Spike Plots Generation
-OutputOptions = {'SpikeList', 'Final'};
+OutputOptions = {'PropSpikeList', 'Final'};
 
 % Clearing InputStruct
 clear InputStruct;
@@ -269,5 +269,5 @@ BegTime = (5*60 + 0)*60 + 240;
 EndTime = (5*60 + 0)*60 + 250;
 
 figure;
-[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, OutputVarsSpikeList.SpikeList);
+[GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, OutputVarsSpikeList.PropSpikeList);
 plot(GenerationTimeVect - BegTime*1000*double(InputStruct.onemsbyTstep), double(InputStruct.NStart(SpikeSynIndVect)), '.', 'MarkerSize', 1);
