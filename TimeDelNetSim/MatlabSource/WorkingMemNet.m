@@ -1,17 +1,20 @@
-function [ A, InhNeurons, Weights, Delays ] = WorkingMemNet(  )
+function [ A, InhNeurons, Weights, Delays ] = WorkingMemNet( NetworkParams )
 %WORKINGMEMNET Summary of this function goes here
 %   Detailed explanation goes here
 
-NExc = 800;
-NInh = 200;
+NExc = NetworkParams.NExc; % 800
+NInh = NetworkParams.NInh; % 200
 
 InhNeurons = [false(NExc, 1); true(NInh, 1)];
 N = NExc + NInh;
 
-DelayRange = 20;
+DelayRange = NetworkParams.DelayRange; % 20
 
-F_E = 100;
-F_IE = 100;
+F_E  = NetworkParams.F_E;  % Fanout of Exc Neurons = 100
+F_IE = NetworkParams.F_IE; % Fanout of Inh->Exc connection = 100
+
+InitInhWeight = NetworkParams.InitInhWeight;
+InitExcWeight = NetworkParams.InitExcWeight;
 
 NEnd = cell(N, 1);
 NStart = cell(N, 1);
@@ -25,7 +28,7 @@ for i=1:NExc
 	NStart{i}     = i*ones(size(NEnd{i}));
 	InhSynCell{i} = false(size(NEnd{i}));
 	Delay{i}      = randsample(DelayRange, F_E, true);
-	Weight{i}     = 6*ones(size(NEnd{i}));
+	Weight{i}     = InitExcWeight*ones(size(NEnd{i}));
 	Weight{i}(Weight{i} < 0) = 0;
 	if mod(i,1000) == 0
 		display(i);
@@ -36,7 +39,7 @@ for i=NExc+1:N
 	NStart{i}     = i*ones(size(NEnd{i}));
 	InhSynCell{i} = true(size(NEnd{i}));
 	Delay{i}      = 1*ones(F_IE, 1);
-	Weight{i}     = -5*ones(size(NEnd{i}));
+	Weight{i}     = InitInhWeight*ones(size(NEnd{i}));
 	Weight{i}(Weight{i} > 0) = 0;
 	if mod(i,1000) == 0
 		display(i);
