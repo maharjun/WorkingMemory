@@ -8,21 +8,18 @@ rng('default');
 rng(25);
 N = 1000;
 E = 0.8;
-RecurrentNetParams.NExc = round(N*E);
-RecurrentNetParams.NInh = round(N - N*E);
+WorkingMemNetParams.NExc = round(N*E);
+WorkingMemNetParams.NInh = round(N - N*E);
 
-RecurrentNetParams.NSynExctoExc = ceil(100*N/2000);
-RecurrentNetParams.NSynExctoInh = ceil(100*N/2000);
-RecurrentNetParams.NSynInhtoExc = ceil(1200*N/2000);
+WorkingMemNetParams.F_E  = 100;
+WorkingMemNetParams.F_IE = 100;
 
-RecurrentNetParams.MeanExctoExc = 0.5*2000/N;
-RecurrentNetParams.MeanExctoInh = 0.15*2000/N;
-RecurrentNetParams.MeanInhtoExc = -0.7*2000/N;
+WorkingMemNetParams.InitInhWeight = -5;
+WorkingMemNetParams.InitExcWeight = 6;
 
-RecurrentNetParams.Var          = 0.2;
-RecurrentNetParams.DelayRange   = 20;
+WorkingMemNetParams.DelayRange   = 20;
 
-[A, Ninh, Weights, Delays] = WorkingMemNet();
+[A, Ninh, Weights, Delays] = WorkingMemNet(WorkingMemNetParams);
 
 a = 0.02*ones(N,1);
 b = 0.2*ones(N,1);
@@ -58,7 +55,7 @@ InputStruct.U = single(0.2*InputStruct.V);
 
 InputStruct.onemsbyTstep                   = int32(1);
 InputStruct.NoOfms                         = int32(80*1000);
-InputStruct.DelayRange            = int32(RecurrentNetParams.DelayRange);
+InputStruct.DelayRange            = int32(WorkingMemNetParams.DelayRange);
 InputStruct.StorageStepSize                = int32(4000);
 InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.StatusDisplayInterval          = int32(2000);
