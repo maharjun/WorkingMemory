@@ -150,6 +150,8 @@
     <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.cpp" />
     <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\MexMem.cpp" />
     <ClCompile Include="Headers\IExtHeaders\IExtCode.cpp" />
+    <ClCompile Include="Headers\IExtHeaders\IExtPattern.cpp" />
+    <ClCompile Include="Headers\IExtHeaders\NeuronPattern.cpp" />
     <ClCompile Include="Source\MexFunctionInterface.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Exe|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Exe|x64'">true</ExcludedFromBuild>
@@ -170,6 +172,8 @@
     <ClInclude Include="..\MexMemoryInterfacing\Headers\FlatVectTree\VectTreeInfo.hpp" />
     <ClInclude Include="..\MexMemoryInterfacing\Headers\MexTypeTraits.hpp" />
     <ClInclude Include="Headers\IExtHeaders\IExtCode.hpp" />
+    <ClInclude Include="Headers\IExtHeaders\IExtPattern.hpp" />
+    <ClInclude Include="Headers\IExtHeaders\NeuronPattern.hpp" />
     <ClInclude Include="Headers\Network.hpp" />
     <ClInclude Include="Headers\NeuronSim.hpp" />
   </ItemGroup>

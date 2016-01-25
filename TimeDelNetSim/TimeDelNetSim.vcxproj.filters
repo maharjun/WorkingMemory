@@ -45,6 +45,12 @@
     <ClCompile Include="..\$(ExtLibDirs)\MexMemoryInterfacing\Headers\InterruptHandling.cpp">
       <Filter>Header Files\MexMemoryInterfacing</Filter>
     </ClCompile>
+    <ClCompile Include="Headers\IExtHeaders\IExtPattern.cpp">
+      <Filter>Header Files\IExtHeaders</Filter>
+    </ClCompile>
+    <ClCompile Include="Headers\IExtHeaders\NeuronPattern.cpp">
+      <Filter>Header Files\IExtHeaders</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Network.hpp">
@@ -79,6 +85,12 @@
     </ClInclude>
     <ClInclude Include="..\MexMemoryInterfacing\Headers\FlatVectTree\VectTreeInfo.hpp">
       <Filter>Header Files\MexMemoryInterfacing\FlatVectTree</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\IExtHeaders\IExtPattern.hpp">
+      <Filter>Header Files\IExtHeaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\IExtHeaders\NeuronPattern.hpp">
+      <Filter>Header Files\IExtHeaders</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

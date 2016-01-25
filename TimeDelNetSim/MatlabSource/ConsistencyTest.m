@@ -227,7 +227,7 @@ FinalStateSparse = FinalState;
 clear OutputVars StateVars InputState FinalState;
 
 %% Spike Plots Generation
-OutputOptions = {'SpikeList', 'Final'};
+OutputOptions = {'SpikeList', 'IExt.IExtNeuron', 'Final', 'Initial'};
 
 % Clearing InputStruct
 clear InputStruct;
@@ -242,6 +242,9 @@ if iscell(InputStruct.InitialState.SpikeQueue)
 	InputStruct.InitialState.SpikeQueue = InputStruct.InitialState.SpikeQueue.Convert2Struct();
 end
 
+% Checking initialization with different time;
+InputStruct.InitialState.Time = InputStruct.InitialState.Time + 8000;
+
 InputStruct.NoOfms                = int32(250*1000);
 InputStruct.StorageStepSize       = int32(0);
 InputStruct.OutputControl         = strjoin(OutputOptions);
@@ -250,10 +253,28 @@ InputStruct.StatusDisplayInterval = int32(2000);
 InputStruct.ST_STDP_MaxRelativeInc = single(2.5);
 InputStruct.Iext.IExtAmplitude = single(30);
 InputStruct.Iext.AvgRandSpikeFreq = single(0.3);
-InputStruct.Iext.MajorTimePeriod = uint32(15000);
-InputStruct.Iext.MajorOnTime     = uint32(1000);
-InputStruct.Iext.MinorTimePeriod = uint32(100);
-InputStruct.Iext.NoOfNeurons     = uint32(60);
+
+% Setting IExtPattern
+IExtPattern.StartOffsetArray        = zeros(0, 1, 'uint32');
+IExtPattern.EndOffsetArray          = zeros(0, 1, 'uint32');
+IExtPattern.PatternTimePeriodArray  = zeros(0, 1, 'uint32');
+IExtPattern.NeuronPatternIndexArray = zeros(0, 1, 'uint32');
+IExtPattern.ParentIndexArray        = zeros(0, 1, 'uint32');
+IExtPattern.NeuronPatterns          = cell(0, 1);
+
+IExtPattern.NeuronPatterns{end+1} = uint32([1, 60]);
+IExtPattern.NeuronPatterns{end+1} = uint32([60, 1]);
+
+IExtPattern = AddInterval(IExtPattern, 0, 18000000, 18000000+100000, 15000, 0);      % 1
+	IExtPattern = AddInterval(IExtPattern, 1, 0, 1000, 200, 0);      % 2
+		IExtPattern = AddInterval(IExtPattern, 2, 100, 160 , 0, 2);   % 3
+		IExtPattern = AddInterval(IExtPattern, 2,   0,  60, 0, 1);   % 4
+IExtPattern = AddInterval(IExtPattern, 0, 18000000+120000, 18000000+120000, 10000, 0); % 5
+	IExtPattern = AddInterval(IExtPattern, 5, 2000, 3000, 200, 0);   % 6
+		IExtPattern = AddInterval(IExtPattern, 6, 0  , 60 , 0, 2);   % 7
+		IExtPattern = AddInterval(IExtPattern, 6, 100, 160, 0, 1);   % 8
+
+InputStruct.Iext.IExtPattern = IExtPattern;
 
 InputStruct.OutputFile = 'SimResults1000DebugSpikeListfrom5Hours.mat';
 save('../Data/InputData.mat', 'InputStruct');
@@ -262,9 +283,18 @@ save('../Data/InputData.mat', 'InputStruct');
 clear functions;
 
 %% Plotting SpikeList
-BegTime = (5*60 + 0)*60 + 240;
-EndTime = (5*60 + 0)*60 + 250;
+BegTime = (5*60 + 0)*60 + 15;
+EndTime = (5*60 + 0)*60 + 25;
 
 figure;
 [GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, OutputVarsSpikeList.SpikeList);
-plot(GenerationTimeVect - BegTime*1000*double(InputStruct.onemsbyTstep), double(InputStruct.NStart(SpikeSynIndVect)), '.', 'MarkerSize', 1);
+plot(GenerationTimeVect - BegTime*1000*double(InputStruct.onemsbyTstep), double(InputStruct.NStart(SpikeSynIndVect)), '.', 'MarkerSize', 1); 
+
+%% Plotting IExt
+BegTime = (5*60 + 0)*60 + 20;
+EndTime = (5*60 + 0)*60 + 40;
+
+RelInds = (StateVarsSpikeList.Time >= BegTime*InputStateSpikeList.onemsbyTstep*1000) & ...
+	      (StateVarsSpikeList.Time <  EndTime*InputStateSpikeList.onemsbyTstep*1000);
+
+plot (StateVarsSpikeList.Time(RelInds) - BegTime*InputStateSpikeList.onemsbyTstep*1000, StateVarsSpikeList.Iext.IExtNeuron(RelInds));
