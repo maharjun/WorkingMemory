@@ -1,6 +1,7 @@
 rmpath('../../x64/Debug_Lib');
 addpath('../../x64/Release_Lib');
 % addpath('export_fig-master');
+addpath ../Headers/IExtHeaders/MatlabSource/
 addpath ../../MexMemoryInterfacing/MatlabSource/
 
 %%
@@ -255,12 +256,7 @@ InputStruct.Iext.IExtAmplitude = single(30);
 InputStruct.Iext.AvgRandSpikeFreq = single(0.3);
 
 % Setting IExtPattern
-IExtPattern.StartOffsetArray        = zeros(0, 1, 'uint32');
-IExtPattern.EndOffsetArray          = zeros(0, 1, 'uint32');
-IExtPattern.PatternTimePeriodArray  = zeros(0, 1, 'uint32');
-IExtPattern.NeuronPatternIndexArray = zeros(0, 1, 'uint32');
-IExtPattern.ParentIndexArray        = zeros(0, 1, 'uint32');
-IExtPattern.NeuronPatterns          = cell(0, 1);
+IExtPattern = getEmptyIExtPattern();
 
 IExtPattern.NeuronPatterns{end+1} = uint32([1, 60]);
 IExtPattern.NeuronPatterns{end+1} = uint32([60, 1]);
@@ -290,7 +286,7 @@ figure;
 [GenerationTimeVect, SpikeSynIndVect] = ParseSpikeList(BegTime, EndTime, InputStruct, OutputVarsSpikeList.SpikeList);
 plot(GenerationTimeVect - BegTime*1000*double(InputStruct.onemsbyTstep), double(InputStruct.NStart(SpikeSynIndVect)), '.', 'MarkerSize', 1); 
 
-%% Plotting IExt
+%% Plotting IExt Pattern
 BegTime = (5*60 + 0)*60 + 20;
 EndTime = (5*60 + 0)*60 + 40;
 
