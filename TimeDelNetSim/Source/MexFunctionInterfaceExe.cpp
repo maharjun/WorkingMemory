@@ -95,8 +95,7 @@ int main(){
 			WriteOutput("Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
 		}
 		else if (A == ExOps::EXCEPTION_INVALID_INPUT) {
-			// Do nothing. Everything to be done is done prior to the throwing 
-			// of the exception
+			WriteOutput("EXCEPTION: Invalid Input\n");
 		}
 		else if (A == ExOps::EXCEPTION_CONST_MOD || A == ExOps::EXCEPTION_EXTMEM_MOD) {
 			WriteOutput("Invalid Modification of %s Memory\n", ((A == ExOps::EXCEPTION_CONST_MOD) ? "const" : "external"));
