@@ -581,17 +581,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]){
 	catch (ExOps::ExCodes A) {
 		if (A == ExOps::EXCEPTION_MEM_FULL) {
 			char OutputString[256];
-			SPRINTF_FUNC(OutputString, 256, "Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
+			SPRINTF_FUNC(OutputString, 256, "EXCEPTION: Mem Limit of %lld MB Exceeded\n", (MemCounter::MemUsageLimit) >> 20);
 			mexErrMsgIdAndTxt("CppSimException:MemOverFlow", OutputString);
 		}
 		else if (A == ExOps::EXCEPTION_INVALID_INPUT) {
 			char OutputString[256];
-			SPRINTF_FUNC(OutputString, 256, "Type Mismatch Occurred\n");
+			SPRINTF_FUNC(OutputString, 256, "EXCEPTION: Invalid Input\n");
 			mexErrMsgIdAndTxt("CppSimException:InvalidInput", OutputString);
 		}
 		else if (A == ExOps::EXCEPTION_CONST_MOD || A == ExOps::EXCEPTION_EXTMEM_MOD) {
 			char OutputString[256];
-			SPRINTF_FUNC(OutputString, 256, "Invalid Modification of %s Memory\n", ((A == ExOps::EXCEPTION_CONST_MOD)?"const":"external") );
+			SPRINTF_FUNC(OutputString, 256, "EXCEPTION: Invalid Modification of %s Memory\n", ((A == ExOps::EXCEPTION_CONST_MOD)?"const":"external") );
 			mexErrMsgIdAndTxt("CppSimException:InvalidInput", OutputString);
 		}
 	}
