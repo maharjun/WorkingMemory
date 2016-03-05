@@ -1,4 +1,4 @@
-function [ SingleRecord ] = getSingleRecord( InputData, Index )
+function [ SingleRecord ] = getSingleRecord( InputData, Index, NoWarnings )
 %GETSINGLERECORD Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -11,6 +11,9 @@ elseif isstruct(InputData)
 	for i = 1:length(DataFieldNames)
 		CurrentFieldName = DataFieldNames{i};
 		SingleRecord.(CurrentFieldName) = getSingleRecord(InputData.(CurrentFieldName), Index);
+		if isempty(SingleRecord.(CurrentFieldName)) && ~NoWarnings
+			warning('getSingleRecord:InputWarning','The Field %s is empty. Verify if this is intended', CurrentFieldName);
+		end
 	end
 elseif iscell(InputData)
 	% Selecting element of cell array
@@ -21,8 +24,8 @@ elseif min(size(InputData)) > 1
 elseif isvector(InputData)
 	% Selecting element of vector
 	SingleRecord = InputData(Index);
+elseif isempty(InputData)
+	SingleRecord = zeros(0,1,coder.typeof(InputData).ClassName);
 end
 
-
 end
-
