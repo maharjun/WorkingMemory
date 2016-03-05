@@ -1,6 +1,10 @@
-function [ SingleState ] = getSingleState( StateStruct, timeInstant )
+function [ SingleState ] = getSingleState( StateStruct, timeInstant, NoWarnings)
 % CONVERTSTATETOINITIALCOND Converts structs
 %   basically a name conversion Function as such. 
+
+if nargin() == 2
+	NoWarnings = false;
+end
 
 timeIndex = find(StateStruct.Time == timeInstant, 1);
 if isempty(timeIndex)
@@ -9,7 +13,7 @@ if isempty(timeIndex)
 	throw(Ex);
 end
 
-SingleState = getSingleRecord(StateStruct, timeIndex);
+SingleState = getSingleRecord(StateStruct, timeIndex, NoWarnings);
 
 end
 
