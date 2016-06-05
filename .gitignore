@@ -53,6 +53,7 @@ Temporary Items
 !/RandomNumGen
 !/MexMemoryInterfacing
 !/CMakeModules
+!/ExternalInputCurrent
 
 !/TimeDelNetSim
 /TimeDelNetSim/*

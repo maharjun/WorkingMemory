@@ -7,3 +7,6 @@
 [submodule "CMakeModules"]
 	path = CMakeModules
 	url = https://github.com/maharjun/CMakeModules
+[submodule "ExternalInputCurrent"]
+	path = ExternalInputCurrent
+	url = https://github.com/maharjun/ExternalInputCurrent
