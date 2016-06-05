@@ -52,6 +52,8 @@ Temporary Items
 # un-ignore submodules
 !/RandomNumGen
 !/MexMemoryInterfacing
+!/CMakeModules
+!/ExternalInputCurrent
 
 !/TimeDelNetSim
 /TimeDelNetSim/*
