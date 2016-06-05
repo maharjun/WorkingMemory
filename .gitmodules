@@ -4,9 +4,6 @@
 [submodule "MexMemoryInterfacing"]
 	path = MexMemoryInterfacing
 	url = https://github.com/maharjun/MexMemoryInterfacing
-[submodule "External-Input-Current"]
-	path = TimeDelNetSim/Headers/IExtHeaders
-	url = https://github.com/maharjun/External-Input-Current
 [submodule "CMakeModules"]
 	path = CMakeModules
 	url = https://github.com/maharjun/CMakeModules
