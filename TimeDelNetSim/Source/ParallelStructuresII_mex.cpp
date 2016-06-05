@@ -20,15 +20,15 @@
 #include "../Headers/Network.hpp"
 #include "../Headers/NeuronSim.hpp"
 
-#include "../Headers/IExtHeaders/IExtCode.hpp"
+#include <ExternalInputCurrent/IExtCode.hpp>
 
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/GenericMexIO.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/InterruptHandling.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/LambdaToFunction.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp)
+#include <MexMemoryInterfacing/Headers/MexMem.hpp>
+#include <MexMemoryInterfacing/Headers/GenericMexIO.hpp>
+#include <MexMemoryInterfacing/Headers/InterruptHandling.hpp>
+#include <MexMemoryInterfacing/Headers/LambdaToFunction.hpp>
+#include <MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp>
 
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/RandomNumGen/Headers/FiltRandomTBB.hpp)
+#include <RandomNumGen/Headers/FiltRandomTBB.hpp>
 
 #include <emmintrin.h>
 #include <smmintrin.h>

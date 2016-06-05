@@ -1,25 +1,15 @@
 #ifndef NEURONSIM_HPP
 #define NEURONSIM_HPP
 
-#if defined TIME_DEL_NET_SIM_AS_SUB
-	#define HEADER_PATHS_TDNS ..
-#elif !defined HEADER_PATHS_TDNS
-	#define HEADER_PATHS_TDNS .
-#endif
-
 #include "Network.hpp"
 
-#include "./IExtHeaders/IExtCode.hpp"
+#include <ExternalInputCurrent/IExtCode.hpp>
 
-#define SETQUOTE(A) #A
-
-#define SETQUOTE_EXPAND(A) SETQUOTE(A)
-
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/MexMem.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/GenericMexIO.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/LambdaToFunction.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp)
-#include SETQUOTE_EXPAND(../../HEADER_PATHS_TDNS/RandomNumGen/Headers/FiltRandomTBB.hpp)
+#include <MexMemoryInterfacing/Headers/MexMem.hpp>
+#include <MexMemoryInterfacing/Headers/GenericMexIO.hpp>
+#include <MexMemoryInterfacing/Headers/LambdaToFunction.hpp>
+#include <MexMemoryInterfacing/Headers/FlatVectTree/FlatVectTree.hpp>
+#include <RandomNumGen/Headers/FiltRandomTBB.hpp>
 
 #include <utility>
 #include <stdint.h>
