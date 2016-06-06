@@ -22,7 +22,7 @@
 
 using namespace std;
 
-int main(){
+int main(int argc, char *args[]){
 
 	// Open Memory Usage Account
 	size_t MemAccountKey =  MemCounter::OpenMemAccount(size_t(4) << 29);
@@ -34,19 +34,40 @@ int main(){
 				StateVars  = nullptr,
 				FinalState = nullptr;
 
-	MATFile* InputFilePtr = matOpen("Data/InputData.mat", "r");
-	MATFile* OutputFilePtr = nullptr;
-	char OutFileName[256];
+	char InputFilePath[256] = "";
+	char OutFileName[256] = "";
 	char OutputFilePath[256] = "";
-	Input = matGetVariable(InputFilePtr, "InputStruct");
-	
-	mxGetString_730(mxGetField(Input, 0, "OutputFile"), OutFileName, 256);
-	STRCAT_SAFE(OutputFilePath, 256, "Data/");
-	STRCAT_SAFE(OutputFilePath, 256, OutFileName);
 
-	matClose(InputFilePtr);
+	// Process Input Aruments and get filenames
+	if (argc == 1) {
+		STRCAT_SAFE(InputFilePath, 256, "InputData.mat");
+		STRCAT_SAFE(OutputFilePath, 256, "OutputData.mat");
+	}
+	else if(argc == 2) {
+		STRCAT_SAFE(InputFilePath, 256, args[1]);
+		STRCAT_SAFE(OutputFilePath, 256, "OutputData.mat");
+	}
+	else if (argc == 3) {
+		STRCAT_SAFE(InputFilePath, 256, args[1]);
+		STRCAT_SAFE(OutputFilePath, 256, args[2]);
+	}
+	else {
+		WriteOutput("Require at max two arguments\n");
+		std::cin.ignore(1024, '\n');
+		std::cout << "Press enter to terminate simulation...";
+		std::cin.get();
+	}
+
+	MATFile* InputFilePtr = matOpen(InputFilePath, "r");
+	MATFile* OutputFilePtr = nullptr;
+	
+	if (InputFilePtr == nullptr) {
+		WriteException(ExOps::EXCEPTION_INVALID_INPUT, "The File '%s' does not exist.\n", InputFilePath);
+	}
+	
+	Input = matGetVariable(InputFilePtr, "InputStruct");
 	if (Input == nullptr){
-		WriteException(ExOps::EXCEPTION_INVALID_INPUT, "The variable name in the mex file InputData must be InputStruct");
+		WriteException(ExOps::EXCEPTION_INVALID_INPUT, "The variable name in the Input Data file must be 'InputStruct'");
 	}
 	
 	mxArrayPtr lhs[4] = { nullptr, nullptr, nullptr, nullptr };
@@ -56,7 +77,7 @@ int main(){
 	OutputFilePtr = matOpen(OutputFilePath, "r");
 	while (OutputFilePtr){
 		char UserConfirmResp;
-		std::cout << "The following file already exists - \n" << std::endl << "    " << OutFileName << std::endl << "\nSure about rewrite? : " << std::flush;
+		std::cout << "The following file already exists - \n" << std::endl << "    " << OutputFilePath << std::endl << "\nSure about rewrite? : " << std::flush;
 		std::cin >> UserConfirmResp;
 		if ((UserConfirmResp | 32) == 'y'){
 			matClose(OutputFilePtr);
