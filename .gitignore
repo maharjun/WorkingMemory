@@ -49,6 +49,9 @@ Temporary Items
 /*.suo
 /*.*sdf
 
+# ignore Clion relatedDirectory
+/.idea
+
 # un-ignore submodules
 !/RandomNumGen
 !/MexMemoryInterfacing
