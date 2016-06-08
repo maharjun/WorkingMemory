@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+   cmake_minimum_required(VERSION 3.5)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules")
 include(CppGlob)
 include(CustomMexFunctions)
@@ -76,6 +76,9 @@ message(STATUS "C++ Compiler = ${CMAKE_CXX_COMPILER}")
    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
    install_mex(TimeDelNetSim_mexlib .)
    install_mex_exec(TimeDelNetSim_mexexe .)
+   install(
+      DIRECTORY TimeDelNetSim/MatlabSource DESTINATION .
+      FILES_MATCHING PATTERN "*.m")
    
 # unset some cached variables so that they are restord to their
 # default values the next time cmake is run
