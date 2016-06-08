@@ -70,15 +70,18 @@ message(STATUS "C++ Compiler = ${CMAKE_CXX_COMPILER}")
    custom_add_mex_exec(TimeDelNetSim_mexexe ${SOURCE_FILES_EXE})
    enable_tbb(TimeDelNetSim_mexexe)
 
+# Add Module Directory File
+   configure_file(
+      ModulePath.txt.in
+      ModulePath.txt)
+   
 # install instructions
    
    install(DIRECTORY DESTINATION "${CMAKE_BINARY_DIR}/install" CONFIGURATIONS "Release")
    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
    install_mex(TimeDelNetSim_mexlib .)
    install_mex_exec(TimeDelNetSim_mexexe .)
-   install(
-      DIRECTORY TimeDelNetSim/MatlabSource DESTINATION .
-      FILES_MATCHING PATTERN "*.m")
+   install(FILES ${CMAKE_BINARY_DIR}/ModulePath.txt DESTINATION .)
    
 # unset some cached variables so that they are restord to their
 # default values the next time cmake is run
