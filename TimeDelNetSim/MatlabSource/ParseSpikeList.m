@@ -102,8 +102,8 @@ SpikeDelayVect        = round(double(InputStruct.onemsbyTstep)*InputStruct.Delay
 GenerationTimeVect    = ArrivalTimeVect - double(SpikeDelayVect);
 
 % Filtering according to GenerationTimeVect
-SpikeSynIndVect       = SpikeSynIndVect   (GenerationTimeVect >= BegTime & GenerationTimeVect <= EndTime);
-GenerationTimeVect    = GenerationTimeVect(GenerationTimeVect >= BegTime & GenerationTimeVect <= EndTime);
+SpikeSynIndVect       = SpikeSynIndVect   (GenerationTimeVect >= BegTime & GenerationTimeVect < EndTime);
+GenerationTimeVect    = GenerationTimeVect(GenerationTimeVect >= BegTime & GenerationTimeVect < EndTime);
 
 % Sorting Spikes by (GenerationTime, SpikeSynInd)
 [~, sortinds] = sortrows([GenerationTimeVect, SpikeSynIndVect]);
