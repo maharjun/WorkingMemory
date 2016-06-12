@@ -2,6 +2,10 @@ function [ SingleRecord ] = getSingleRecord( InputData, Index, NoWarnings )
 %GETSINGLERECORD Summary of this function goes here
 %   Detailed explanation goes here
 
+if nargin < 3
+    NoWarnings = false;
+end
+
 if isstruct(InputData) && isfield(InputData, 'ClassName') && strcmp(InputData.ClassName, 'FlatCellArray')
 	tempFCA = FlatCellArray([], InputData);
 	SingleRecord = tempFCA{Index}.Convert2Struct();
