@@ -59,6 +59,9 @@ Temporary Items
 !/Grid2D
 !/ExternalInputCurrent
 
+# unignore project directories
+!/getResponsibleSpikes
+
 !/TimeDelNetSim
 /TimeDelNetSim/*
 !/TimeDelNetSim/*.*
