@@ -10,3 +10,6 @@
 [submodule "ExternalInputCurrent"]
 	path = ExternalInputCurrent
 	url = https://github.com/maharjun/ExternalInputCurrent
+[submodule "Grid2D"]
+	path = Grid2D
+	url = https://github.com/maharjun/Grid2D

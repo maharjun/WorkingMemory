@@ -1,0 +1,14 @@
+% getResponsibleSpikes - Calculates the spikes responsible for the generated
+% spikes.
+% 
+% The Syntax is as below:
+% 
+%     ResponsibleSpikes = getResponsibleSpikes(InputStruct)
+% 
+% The Input Fields required in InputStruct are:
+% 
+% 	N (Number of Neurons)
+% 	NStart, NEnd, Weights, Delay
+% 	U, V constricted to the respective time range
+% 	SpikeList (constricted, note that we dont need to change the entries)
+% 	onemsbyTstep
