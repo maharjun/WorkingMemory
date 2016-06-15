@@ -56,7 +56,11 @@ Temporary Items
 !/RandomNumGen
 !/MexMemoryInterfacing
 !/CMakeModules
+!/Grid2D
 !/ExternalInputCurrent
+
+# unignore project directories
+!/getResponsibleSpikes
 
 !/TimeDelNetSim
 /TimeDelNetSim/*
