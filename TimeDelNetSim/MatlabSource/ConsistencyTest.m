@@ -1,7 +1,6 @@
-rmpath('../../x64/Debug_Lib');
-addpath('../../x64/Release_Lib');
+addpath('../../TimeDelNetSim_build/install');
 % addpath('export_fig-master');
-addpath ../Headers/IExtHeaders/MatlabSource/
+addpath ../../ExternalInputCurrent/MatlabSource/
 addpath ../../MexMemoryInterfacing/MatlabSource/
 
 %%
@@ -67,12 +66,14 @@ InputStruct.ST_STDP_MaxRelativeInc = single(2.5);
 InputStruct.Iext.IExtAmplitude = single(0);
 InputStruct.Iext.AvgRandSpikeFreq = single(1);
 
-InputStruct.OutputFile = 'SimResults1000DebugSparseLong.mat';
+if ~exist('../Data', 'dir')
+    mkdir('../Data')
+end
 save('../Data/InputData.mat', 'InputStruct');
 
 % [OutputVarsSparse, StateVarsSparse, FinalStateSparse, InputStateSparse] = TimeDelNetSimMEX_Lib(InputStruct);
 % Run the program after this
-! start "TimeDelNetSim Sparse Simulation" /d . "powershell" ". .\Release_Exe.ps1"
+!../../TimeDelNetSim_build/install/TimeDelNetSim ../Data/InputData.mat ../Data/SimResults1000DebugSparseLong.mat
 %% Get Detailed vector from Initial State 
 % This is to check correctness of initial state return with default inputs
 
@@ -103,7 +104,7 @@ save('../Data/InputData.mat', 'InputStruct');
 % [OutputVarsDetailed1, StateVarsDetailed1, FinalStateDetailed1, InputStateDetailed1] = TimeDelNetSim(InputStruct);
 clear functions;
 % Run the program
-! start "TimeDelNetSim Sparse Simulation" /d . "powershell" ". .\Release_Exe.ps1"
+!../../TimeDelNetSim_build/install/TimeDelNetSim ../Data/InputData.mat ../Data/SimResults1000DebugDetailedfromInit.mat
 %% Loading Relevent Data
 
 % Loading and renaming variables for detailed simulation
@@ -153,7 +154,7 @@ InputStruct.OutputFile = 'SimResults1000DebugDetailedfromFinal.mat';
 save('../Data/InputData.mat', 'InputStruct');
 
 % Run Program
-! start "TimeDelNetSim Sparse Simulation" /d . "powershell" ". .\Release_Exe.ps1"
+!../../TimeDelNetSim_build/install/TimeDelNetSim ../Data/InputData.mat ../Data/SimResults1000DebugDetailedfromFinal.mat
 %% Loading Relevant Data
 load('../Data/SimResults1000DebugDetailedfromFinal.mat');
 clear OutputVarsDetailedFinal StateVarsDetailedFinal InputStateDetailedFinal FinalStateDetailedFinal;
@@ -256,19 +257,19 @@ InputStruct.Iext.IExtAmplitude = single(30);
 InputStruct.Iext.AvgRandSpikeFreq = single(0.3);
 
 % Setting IExtPattern
-IExtPattern = getEmptyIExtPattern();
-
+IExtPatternString = {
+    'from 18000s to 18100s every 15s     '
+    '    from 0 to 1s every 200ms          '
+    '        from 100ms to 160ms generate 2'
+    '        from   0ms to  60ms generate 1'
+    'from 18120s onwards every 10s        '
+    '    from 2s to 3s every 200ms         '
+    '        from   0ms to  60ms generate 2'
+    '        from 100ms to 160ms generate 1'
+};
+IExtPattern = getIExtPatternFromString(IExtPatternString);
 IExtPattern.NeuronPatterns{end+1} = uint32([1, 60]);
 IExtPattern.NeuronPatterns{end+1} = uint32([60, 1]);
-
-IExtPattern = AddInterval(IExtPattern, 0, 18000000, 18000000+100000, 15000, 0);      % 1
-	IExtPattern = AddInterval(IExtPattern, 1, 0, 1000, 200, 0);      % 2
-		IExtPattern = AddInterval(IExtPattern, 2, 100, 160 , 0, 2);   % 3
-		IExtPattern = AddInterval(IExtPattern, 2,   0,  60, 0, 1);   % 4
-IExtPattern = AddInterval(IExtPattern, 0, 18000000+120000, 18000000+120000, 10000, 0); % 5
-	IExtPattern = AddInterval(IExtPattern, 5, 2000, 3000, 200, 0);   % 6
-		IExtPattern = AddInterval(IExtPattern, 6, 0  , 60 , 0, 2);   % 7
-		IExtPattern = AddInterval(IExtPattern, 6, 100, 160, 0, 1);   % 8
 
 InputStruct.Iext.IExtPattern = IExtPattern;
 
@@ -293,4 +294,85 @@ EndTime = (5*60 + 0)*60 + 40;
 RelInds = (StateVarsSpikeList.Time >= BegTime*InputStateSpikeList.onemsbyTstep*1000) & ...
 	      (StateVarsSpikeList.Time <  EndTime*InputStateSpikeList.onemsbyTstep*1000);
 
+figure;
 plot (StateVarsSpikeList.Time(RelInds) - BegTime*InputStateSpikeList.onemsbyTstep*1000, StateVarsSpikeList.Iext.IExtNeuron(RelInds));
+
+%% Calculating Responsible Synapses
+
+% Performing detailed simulation of 18008s to 18016s
+InputStruct = InputStateSpikeList;
+
+InputStruct.NoOfms = int32(8000);
+InputStruct.StorageStepSize = int32(0);
+
+OutputOptions = {'U', 'V'};
+InputStruct.OutputControl = strjoin(OutputOptions);
+
+[~, StateVarsDetailed, ~] = TimeDelNetSim(InputStruct);
+
+% Isolating relevant SpikeList
+BegTime = InputStruct.InitialState.Time/1000;
+EndTime = (InputStruct.InitialState.Time+InputStruct.NoOfms)/1000;
+RelSpikeList = OutputVarsSpikeList.SpikeList;
+BegIndex = find(RelSpikeList.TimeRchd >  BegTime*1000, 1, 'first');
+EndIndex = find(RelSpikeList.TimeRchd <= EndTime*1000, 1, 'last');
+RelSpikeList.TimeRchd = RelSpikeList.TimeRchd(BegIndex:EndIndex);
+RelSpikeList.TimeRchdStartInds = RelSpikeList.TimeRchdStartInds(BegIndex:EndIndex+1);
+RelSpikeList.SpikeSynInds = RelSpikeList.SpikeSynInds(RelSpikeList.TimeRchdStartInds(1)+1:RelSpikeList.TimeRchdStartInds(end));
+
+clear RespSpikesInputStruct;
+RespSpikesInputStruct.N = int32(length(InputStruct.a));
+
+RespSpikesInputStruct.NStart = InputStruct.NStart;
+RespSpikesInputStruct.NEnd   = InputStruct.NEnd;
+RespSpikesInputStruct.Weight = InputStruct.InitialState.Weight;
+RespSpikesInputStruct.Delay  = InputStruct.Delay;
+
+RespSpikesInputStruct.onemsbyTstep = InputStruct.onemsbyTstep;
+RespSpikesInputStruct.SpikeList = RelSpikeList;
+
+RespSpikesInputStruct.U = StateVarsDetailed.U(:, 2:end);
+RespSpikesInputStruct.V = StateVarsDetailed.V(:, 2:end);
+
+InputStruct = RespSpikesInputStruct;
+save('../Data/InputData.mat', 'InputStruct');
+!../../TimeDelNetSim_build/install/getResponsibleSpikes ../Data/InputData.mat ../Data/OutputRespSpikes.mat
+
+%% Loading Data
+load('../Data/OutputRespSpikes.mat');
+
+%% Running Mex Functions
+
+RespSpikesStructMex = getResponsibleSpikes(RespSpikesInputStruct);
+%% Running Tests
+
+% Checking Consistency of result for the first spike of the first neuron
+ResponsibleSpikes = FlatCellArray([], RespSpikesStruct.ResponsibleSpikes);
+GenSpikeList = FlatCellArray([], RespSpikesStruct.GenSpikeList);
+
+TestFail = MException('getResponsibleSpikes:TestFail', 'A Test has failed');
+
+
+% Checking Consistency between Mex Lib and Exe (This HAS to be else
+% serious shit is wrong)
+if isequal(RespSpikesStructMex, RespSpikesStruct):
+    fprintf('Consistency between Mex Lib and Exe Tested\n');
+else
+    throw(TestFail);
+end
+
+% Getting Responsible Synapses from both mex and .m and checking
+RespSpikesFromMex = ResponsibleSpikes{1}{1};
+RespSpikesFromFunction = getRespSpikesForSpike(StateVarsDetailed, InputStateSpikeList, OutputVarsSpikeList.SpikeList, 1, GenSpikeList{1}(1), 0);
+
+% Testing Synapse correctness
+if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(RespSpikesFromMex+1)+1) == 1)
+    fprintf('Synapse correctness is tested for MEX Function\n');
+else
+    throw(TestFail);
+end
+if all(RespSpikesFromMex(:) == RespSpikesFromFunction(:))
+    fprintf('Mex Function consistent with MATLAB Functions\n');
+else
+    throw(TestFail);
+end
