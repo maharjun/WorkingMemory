@@ -341,7 +341,7 @@ save('../Data/InputData.mat', 'InputStruct');
 %% Loading Data
 load('../Data/OutputRespSpikes.mat');
 
-%% Running Mex Functions
+    %% Running Mex Functions
 
 RespSpikesStructMex = getResponsibleSpikes(RespSpikesInputStruct);
 %% Running Tests
@@ -355,7 +355,7 @@ TestFail = MException('getResponsibleSpikes:TestFail', 'A Test has failed');
 
 % Checking Consistency between Mex Lib and Exe (This HAS to be else
 % serious shit is wrong)
-if isequal(RespSpikesStructMex, RespSpikesStruct):
+if isequal(RespSpikesStructMex, RespSpikesStruct)
     fprintf('Consistency between Mex Lib and Exe Tested\n');
 else
     throw(TestFail);
@@ -367,12 +367,28 @@ RespSpikesFromFunction = getRespSpikesForSpike(StateVarsDetailed, InputStateSpik
 
 % Testing Synapse correctness
 if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(RespSpikesFromMex+1)+1) == 1)
-    fprintf('Synapse correctness is tested for MEX Function\n');
+    fprintf('First Spike: Synapse correctness is tested for MEX Function\n');
 else
     throw(TestFail);
 end
 if all(RespSpikesFromMex(:) == RespSpikesFromFunction(:))
-    fprintf('Mex Function consistent with MATLAB Functions\n');
+    fprintf('First Spike: Mex Function consistent with MATLAB Functions\n');
+else
+    throw(TestFail);
+end
+
+% Getting Responsible Synapses from both mex and .m and checking
+RespSpikesFromMex = ResponsibleSpikes{1}{2};
+RespSpikesFromFunction = getRespSpikesForSpike(StateVarsDetailed, InputStateSpikeList, OutputVarsSpikeList.SpikeList, 1, GenSpikeList{1}(2), 0);
+
+% Testing Synapse correctness
+if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(RespSpikesFromMex+1)+1) == 1)
+    fprintf('Second Spike: Synapse correctness is tested for MEX Function\n');
+else
+    throw(TestFail);
+end
+if all(RespSpikesFromMex(:) == RespSpikesFromFunction(:))
+    fprintf('Second Spike: Mex Function consistent with MATLAB Functions\n');
 else
     throw(TestFail);
 end
