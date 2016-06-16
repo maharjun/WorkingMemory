@@ -25,6 +25,8 @@ private:
 	MexMatrix<float> U;
 	MexMatrix<float> V;
 	MexVector<Synapse> Network;
+	MexVector<int32_t> IExtNeuron;
+	MexMatrix<int32_t> IRandNeuron;
 
 	struct SpikeListStruct{
 		MexVector<int32_t> SpikeSynInds;
@@ -48,9 +50,15 @@ private:
 	MexVector<FlatVectTree<uint32_t>> RespSpikeVectSplit;
 	MexVector<uint32_t> CurrentGenSpikeIndex;
 
+	MexVector<FlatVectTree<uint32_t>> RespIRandSplit;
+	MexVector<FlatVectTree<uint32_t>> RespIExtSplit;
+
 	// Output Variables
 	FlatVectTree<uint32_t> ResponsibleSpikes;
 	FlatVectTree<uint32_t> GenSpikeListOut;
+
+	FlatVectTree<uint32_t> ResponsibleIRand;
+	FlatVectTree<uint32_t> ResponsibleIExt;
 
 	void GenSpikeListCalc(void);
 	void SpikeValidityCalc(void);
