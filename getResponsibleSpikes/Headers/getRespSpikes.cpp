@@ -50,7 +50,7 @@ void getRespSpikes::SimulationClass::SpikeValidityCalc(void) {
 			CurrentRange.endPoint = CurrentSpikeTime+1;
 			bool foundRangeBegin = false;
 			for(uint32_t TIndex=CurrentSpikeTime; TIndex --> FirstTimeAfterPrevSpike;) {
-				if (isInReset(U(TIndex-StartTime, j), V(TIndex-StartTime, j))) {
+				if (isInReset(U(TIndex-StartTime, i), V(TIndex-StartTime, i))) {
 					foundRangeBegin = true;
 					CurrentRange.beginPoint = TIndex;
 					break;
@@ -178,6 +178,10 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 			auto currentRange = (CurrentGenSpikeIndex[currEndNeuronInd] < SpikeValidity[currEndNeuronInd].size()) ?
 				                    SpikeValidity[currEndNeuronInd][CurrentGenSpikeIndex[currEndNeuronInd]] :
 				                    DiscreteRange(0,0);
+			if (j+StartSpikeListIndex == 1277706) {
+				j += 1;
+				j -= 1;
+			}
 			if (currentRange.contains(t)) {
 				if (currSynapse.NStart <= NExc)
 					CurrentRangeSpikes[currEndNeuronInd].push_back(j + StartSpikeListIndex);
