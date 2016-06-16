@@ -341,7 +341,7 @@ save('../Data/InputData.mat', 'InputStruct');
 %% Loading Data
 load('../Data/OutputRespSpikes.mat');
 
-    %% Running Mex Functions
+%% Running Mex Functions
 
 RespSpikesStructMex = getResponsibleSpikes(RespSpikesInputStruct);
 %% Running Tests
@@ -360,6 +360,14 @@ if isequal(RespSpikesStructMex, RespSpikesStruct)
 else
     throw(TestFail);
 end
+
+% Checking If All Generated Spikes have been accounted for
+if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleSpikes.PartitionIndex{1})
+    fprintf('Contributing Spikes for all generated Spikes Calculated\n');
+else
+    throw(TestFail)
+end
+
 
 % Getting Responsible Synapses from both mex and .m and checking
 RespSpikesFromMex = ResponsibleSpikes{1}{1};
