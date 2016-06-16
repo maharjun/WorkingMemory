@@ -103,6 +103,11 @@ message(STATUS "C++ Compiler = ${CMAKE_CXX_COMPILER}")
    custom_add_mex_exec(getResponsibleSpikes_mexexe ${RESPSPIKES_SOURCE_FILES_EXE})
    enable_tbb(getResponsibleSpikes_mexexe)
 
+# Add Mex_LIB for binarySearch
+   custom_add_mex(binarySearch 
+      ${CMAKE_SOURCE_DIR}/TimeDelNetSim/MatlabSource/binarySearch/binarySearch.cpp
+      DOCUMENTATION ${CMAKE_SOURCE_DIR}/TimeDelNetSim/MatlabSource/binarySearch/binarySearch.txt)
+
 # Add Module Directory File
    configure_file(
       ModulePath.txt.in
@@ -114,9 +119,13 @@ message(STATUS "C++ Compiler = ${CMAKE_CXX_COMPILER}")
    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install")
    install_mex(TimeDelNetSim_mexlib .)
    install_mex_exec(TimeDelNetSim_mexexe .)
+
    install(FILES ${CMAKE_BINARY_DIR}/ModulePath.txt DESTINATION .)
+
    install_mex(getResponsibleSpikes_mexlib .)
    install_mex_exec(getResponsibleSpikes_mexexe .)
+
+   install_mex(binarySearch ${CMAKE_SOURCE_DIR}/TimeDelNetSim/MatlabSource)
    
 # unset some cached variables so that they are restord to their
 # default values the next time cmake is run
