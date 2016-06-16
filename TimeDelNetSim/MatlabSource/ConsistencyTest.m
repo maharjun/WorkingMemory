@@ -305,7 +305,7 @@ InputStruct = InputStateSpikeList;
 InputStruct.NoOfms = int32(8000);
 InputStruct.StorageStepSize = int32(0);
 
-OutputOptions = {'U', 'V'};
+OutputOptions = {'U', 'V', 'IExt.IExtNeuron', 'IExt.IRandNeuron'};
 InputStruct.OutputControl = strjoin(OutputOptions);
 
 [~, StateVarsDetailed, ~] = TimeDelNetSim(InputStruct);
@@ -333,6 +333,8 @@ RespSpikesInputStruct.SpikeList = RelSpikeList;
 
 RespSpikesInputStruct.U = StateVarsDetailed.U(:, 2:end);
 RespSpikesInputStruct.V = StateVarsDetailed.V(:, 2:end);
+RespSpikesInputStruct.IExtNeuron = StateVarsDetailed.Iext.IExtNeuron(2:end);
+RespSpikesInputStruct.IRandNeuron = StateVarsDetailed.Iext.IRandNeuron(:, 2:end);
 
 InputStruct = RespSpikesInputStruct;
 save('../Data/InputData.mat', 'InputStruct');
@@ -349,6 +351,8 @@ RespSpikesStructMex = getResponsibleSpikes(RespSpikesInputStruct);
 % Checking Consistency of result for the first spike of the first neuron
 ResponsibleSpikes = FlatCellArray([], RespSpikesStruct.ResponsibleSpikes);
 GenSpikeList = FlatCellArray([], RespSpikesStruct.GenSpikeList);
+ResponsibleIExt = FlatCellArray([], RespSpikesStruct.ResponsibleIExt);
+ResponsibleIRand = FlatCellArray([], RespSpikesStruct.ResponsibleIRand);
 
 TestFail = MException('getResponsibleSpikes:TestFail', 'A Test has failed');
 
@@ -367,7 +371,49 @@ if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleSpikes.PartitionIndex{1})
 else
     throw(TestFail)
 end
+if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleIExt.PartitionIndex{1})
+    fprintf('Contributing IExt for all generated Spikes Calculated\n');
+else
+    throw(TestFail)
+end
+if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleIRand.PartitionIndex{1})
+    fprintf('Contributing IRand for all generated Spikes Calculated\n');
+else
+    throw(TestFail)
+end
 
+% Testing Whether The IExt Responsible Have Actually Landed on the
+% specified Neuron at the specified time
+RelevantTimeIndices = binarySearch(double(StateVarsSpikeList.Time), double(ResponsibleIExt.Data));
+ResponsibleIExtNeuronActual = double(StateVarsSpikeList.Iext.IExtNeuron(RelevantTimeIndices));
+ResponsibleIExtNeuronFromSim = binarySearch(double(ResponsibleIExt.PartitionIndex{2}(ResponsibleIExt.PartitionIndex{1}+1)), 0:length(ResponsibleIExt.Data)-1, +1, -1);
+if all(ResponsibleIExtNeuronActual(:) == ResponsibleIExtNeuronFromSim(:))
+    fprintf('All The Responsible IExt Correspond to the correct neurons')
+else
+    throw(TestFail);
+end
+
+% Testing Whether The IExt Responsible Have Actually Landed on the
+% specified Neuron at the specified time
+RelevantTimeIndices = binarySearch(double(StateVarsSpikeList.Time), double(ResponsibleIExt.Data));
+ResponsibleIExtNeuronActual = double(StateVarsSpikeList.Iext.IExtNeuron(RelevantTimeIndices));
+ResponsibleIExtNeuronFromSim = binarySearch(double(ResponsibleIExt.PartitionIndex{2}(ResponsibleIExt.PartitionIndex{1}+1)), 0:length(ResponsibleIExt.Data)-1, +1, -1);
+if all(ResponsibleIExtNeuronActual(:) == ResponsibleIExtNeuronFromSim(:))
+    fprintf('All The Responsible IExt Correspond to the correct neurons')
+else
+    throw(TestFail);
+end
+
+% Testing Whether The IRand Responsible Have Actually Landed on the
+% specified Neuron at the specified time
+RelevantTimeIndices = binarySearch(double(StateVarsSpikeList.Time), double(ResponsibleIRand.Data));
+ResponsibleRandNeuronFromSim = binarySearch(double(ResponsibleIRand.PartitionIndex{2}(ResponsibleIRand.PartitionIndex{1}+1)), 0:length(ResponsibleIRand.Data)-1, +1, -1);
+
+if all(any(bsxfun(@eq, StateVarsDetailed.Iext.IRandNeuron(:, RelevantTimeIndices), ResponsibleRandNeuronFromSim)))
+    fprintf('All The Responsible IRand Correspond to the correct neurons')
+else
+    throw(TestFail);
+end
 
 % Getting Responsible Synapses from both mex and .m and checking
 RespSpikesFromMex = ResponsibleSpikes{1}{1};
