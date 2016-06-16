@@ -179,10 +179,6 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 			auto currentRange = (CurrentGenSpikeIndex[currEndNeuronInd] < SpikeValidity[currEndNeuronInd].size()) ?
 				                    SpikeValidity[currEndNeuronInd][CurrentGenSpikeIndex[currEndNeuronInd]] :
 				                    DiscreteRange(0,0);
-			if (j+StartSpikeListIndex == 1277706) {
-				j += 1;
-				j -= 1;
-			}
 			if (currentRange.contains(t)) {
 				if (currSynapse.NStart <= NExc)
 					CurrentRangeSpikes[currEndNeuronInd].push_back(j + StartSpikeListIndex);
