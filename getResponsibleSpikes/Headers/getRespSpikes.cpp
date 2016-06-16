@@ -12,7 +12,7 @@ void getRespSpikes::SimulationClass::GenSpikeListCalc(void) {
 	//     get CurrArrivingSyns;
 	//     for each syn in CurrArrivingSyns:
 	//         GenTime = syn.Delay - TimeRchd
-	//         if GenTime > GenSpikeList[syn.NStart-1].last():
+	//         if GenTime >= StartTime && GenTime > GenSpikeList[syn.NStart-1].last():
 	//             GenSpikeList[syn.NStart-1].push_back(GenTime)
 
 	for(uint32_t i=0; i < T; ++i) {
@@ -23,8 +23,9 @@ void getRespSpikes::SimulationClass::GenSpikeListCalc(void) {
 			auto &CurrentSpikingSyn = Network[SpikeList.SpikeSynInds[j]];
 			auto SpikeGenTime = SpikeArrTime - CurrentSpikingSyn.DelayinTsteps;
 			auto &CurrGenSpikeList = GenSpikeList[CurrentSpikingSyn.NStart-1];
-			if (CurrGenSpikeList.isempty()
-			    || CurrGenSpikeList.last() < SpikeGenTime) {
+			if (SpikeGenTime >= StartTime
+			    && (CurrGenSpikeList.isempty()
+			        || CurrGenSpikeList.last() < SpikeGenTime)) {
 				CurrGenSpikeList.push_back(SpikeGenTime);
 			}
 		}
@@ -178,10 +179,6 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 			auto currentRange = (CurrentGenSpikeIndex[currEndNeuronInd] < SpikeValidity[currEndNeuronInd].size()) ?
 				                    SpikeValidity[currEndNeuronInd][CurrentGenSpikeIndex[currEndNeuronInd]] :
 				                    DiscreteRange(0,0);
-			if (j+StartSpikeListIndex == 1277706) {
-				j += 1;
-				j -= 1;
-			}
 			if (currentRange.contains(t)) {
 				if (currSynapse.NStart <= NExc)
 					CurrentRangeSpikes[currEndNeuronInd].push_back(j + StartSpikeListIndex);
