@@ -128,15 +128,32 @@ void getRespSpikes::SimulationClass::initialize(const mxArray *InputmxArray) {
 	getInputfromStruct<int32_t>(InputmxArray, "SpikeList.SpikeSynInds", this->SpikeList.SpikeSynInds,
 	                            getInputOps(2, "is_required", "required_size", this->EndSpikeListIndex - this->StartSpikeListIndex));
 
+	// Initializing IExt and IRand related variables
+	getInputfromStruct<int32_t>(InputmxArray, "IExtNeuron", this->IExtNeuron, getInputOps(1, "required_size", T));
+	getInputfromStruct<int32_t>(InputmxArray, "IRandNeuron", this->IRandNeuron);
+	if (IExtNeuron.isempty()) IExtNeuron.resize(T, 0);
+	if (IRandNeuron.isempty()) IRandNeuron.resize(T, 0);
+	else if (IRandNeuron.nrows() != T) {
+		WriteException(ExOps::EXCEPTION_INVALID_INPUT,
+		               "The number of time instants in IRandNeuron is required to be %d, it is currently %d\n",
+		               T, IRandNeuron.nrows());
+	}
+
 	// Initializing Intermediate Variables
 	GenSpikeList.resize(N);
 	SpikeValidity.resize(N);
 	RespSpikeVectSplit.resize(N, FlatVectTree<uint32_t>(1));
 	CurrentGenSpikeIndex.resize(N, 0);
 
+	RespIExtSplit.resize(N, FlatVectTree<uint32_t>(1));
+	RespIRandSplit.resize(N, FlatVectTree<uint32_t>(1));
+
 	// Initializing Output Variables
 	ResponsibleSpikes.setDepth(2);
 	GenSpikeListOut.setDepth(1);
+
+	ResponsibleIExt.setDepth(2);
+	ResponsibleIRand.setDepth(2);
 
 }
 
@@ -145,11 +162,15 @@ mxArray *getRespSpikes::SimulationClass::getOutput(void) {
 	mxArrayPtr OutputStruct = assignmxStruct(
 		{
 			"ResponsibleSpikes",
-		    "GenSpikeList"
+		    "GenSpikeList",
+		    "ResponsibleIExt",
+		    "ResponsibleIRand",
 		},
 		{
 			assignmxArray(ResponsibleSpikes),
-		    assignmxArray(GenSpikeListOut)
+		    assignmxArray(GenSpikeListOut),
+		    assignmxArray(ResponsibleIExt),
+		    assignmxArray(ResponsibleIRand),
 		}
 	);
 	return OutputStruct;
@@ -164,6 +185,8 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 	// is used to make the process of push_back into the FLatVectArrays more efficient
 	// as there is no efficient techniqu to push scalars into FlatCellArray
 	MexVector<MexVector<uint32_t, CAllocator>> CurrentRangeSpikes(N);
+	MexVector<MexVector<uint32_t, CAllocator>> CurrentRangeIExt(N);
+	MexVector<MexVector<uint32_t, CAllocator>> CurrentRangeIRand(N);
 
 	for(uint32_t t=StartTime; t<T+StartTime; ++t) {
 
@@ -185,9 +208,42 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 			}
 		}
 
+		// Check the IExt Generated in the current instant contribute to any spikes
+		{
+			auto currIExtNeuron = IExtNeuron[t-StartTime];
+
+			if (currIExtNeuron > 0) {
+				auto currIExtNeuronInd = currIExtNeuron-1;
+				auto currentRange = (CurrentGenSpikeIndex[currIExtNeuronInd] < SpikeValidity[currIExtNeuronInd].size()) ?
+					                    SpikeValidity[currIExtNeuronInd][CurrentGenSpikeIndex[currIExtNeuronInd]] :
+					                    DiscreteRange(0,0);
+				if (currentRange.contains(t)) {
+					CurrentRangeIExt[currIExtNeuronInd].push_back(t);
+				}
+			}
+		}
+
+		// Check If Any of the IRand Generated in the current instant contribute to
+		// any spikes
+		auto &CurrentIRandNeurons = IRandNeuron[t-StartTime];
+		for(uint32_t j = 0; j < CurrentIRandNeurons.size(); ++j) {
+			auto currIRandNeuron = CurrentIRandNeurons[j];
+			if (currIRandNeuron > 0) {
+				auto currIRandNeuronInd = currIRandNeuron-1;
+				auto currentRange = (CurrentGenSpikeIndex[currIRandNeuronInd] < SpikeValidity[currIRandNeuronInd].size()) ?
+				                    SpikeValidity[currIRandNeuronInd][CurrentGenSpikeIndex[currIRandNeuronInd]] :
+				                    DiscreteRange(0,0);
+				if (currentRange.contains(t)) {
+					CurrentRangeIRand[currIRandNeuronInd].push_back(t);
+				}
+			}
+
+		}
+
 		// Setting up CurrentGenSpikeIndex for the next iteration
-		// Here, we also push elements in CurrentRangeSpikes into RespSpikeVectSplit
-		// if the coresponding range gets over
+		// Here, we also push elements in CurrentRangeSpikes, CurrentRangeIExt,
+		// CurrentRangeIRand into RespSpikeVectSplit if the coresponding range
+		// gets over
 		for(uint32_t j=0; j<N; ++j) {
 			auto &GenSpikeIndex_j = CurrentGenSpikeIndex[j];
 			auto &SpikeValidity_j = SpikeValidity[j];
@@ -196,6 +252,10 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 					GenSpikeIndex_j++;
 					RespSpikeVectSplit[j].push_back(CurrentRangeSpikes[j]);
 					CurrentRangeSpikes[j].clear();
+					RespIExtSplit[j].push_back(CurrentRangeIExt[j]);
+					CurrentRangeIExt[j].clear();
+					RespIRandSplit[j].push_back(CurrentRangeIRand[j]);
+					CurrentRangeIRand[j].clear();
 				}
 			}
 		}
@@ -210,6 +270,8 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 	// Here we join RespSpikeVectSplit to create ResponsibleSpikes
 	for(uint32_t i=0; i<N; ++i) {
 		ResponsibleSpikes.push_back(RespSpikeVectSplit[i]);
+		ResponsibleIExt.push_back(RespIExtSplit[i]);
+		ResponsibleIRand.push_back(RespIRandSplit[i]);
 	}
 	// We Flatten GenSpikeList to get GenSpikeListOut
 	GenSpikeListOut.append(GenSpikeList);
