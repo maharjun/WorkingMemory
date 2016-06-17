@@ -45,15 +45,19 @@ private:
 
 	MexVector<MexVector<uint32_t, CAllocator>> GenSpikeList;
 	MexVector<MexVector<DiscreteRange, CAllocator>> SpikeValidity;
+	MexVector<MexVector<DiscreteRange, CAllocator>> SpikeTipping;
 	MexVector<FlatVectTree<uint32_t>> RespSpikeVectSplit;
+	MexVector<FlatVectTree<uint32_t>> TippingSpikeVectSplit;
 	MexVector<uint32_t> CurrentGenSpikeIndex;
 
 	// Output Variables
 	FlatVectTree<uint32_t> ResponsibleSpikes;
+	FlatVectTree<uint32_t> TippingSpikes;
 	FlatVectTree<uint32_t> GenSpikeListOut;
 
 	void GenSpikeListCalc(void);
 	void SpikeValidityCalc(void);
+	void SpikeTippingCalc(void);
 
 public:
 
