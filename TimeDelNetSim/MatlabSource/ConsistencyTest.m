@@ -350,6 +350,7 @@ RespSpikesStructMex = getResponsibleSpikes(RespSpikesInputStruct);
 
 % Checking Consistency of result for the first spike of the first neuron
 ResponsibleSpikes = FlatCellArray([], RespSpikesStruct.ResponsibleSpikes);
+TippingSpikes = FlatCellArray([], RespSpikesStruct.TippingSpikes);
 GenSpikeList = FlatCellArray([], RespSpikesStruct.GenSpikeList);
 ResponsibleIExt = FlatCellArray([], RespSpikesStruct.ResponsibleIExt);
 ResponsibleIRand = FlatCellArray([], RespSpikesStruct.ResponsibleIRand);
@@ -371,6 +372,11 @@ if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleSpikes.PartitionIndex{1})
 else
     throw(TestFail)
 end
+if ~any(GenSpikeList.PartitionIndex{1} ~= TippingSpikes.PartitionIndex{1})
+    fprintf('Contributing Spikes for all generated Spikes Calculated\n');
+else
+    throw(TestFail)
+end
 if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleIExt.PartitionIndex{1})
     fprintf('Contributing IExt for all generated Spikes Calculated\n');
 else
@@ -380,17 +386,6 @@ if ~any(GenSpikeList.PartitionIndex{1} ~= ResponsibleIRand.PartitionIndex{1})
     fprintf('Contributing IRand for all generated Spikes Calculated\n');
 else
     throw(TestFail)
-end
-
-% Testing Whether The IExt Responsible Have Actually Landed on the
-% specified Neuron at the specified time
-RelevantTimeIndices = binarySearch(double(StateVarsSpikeList.Time), double(ResponsibleIExt.Data));
-ResponsibleIExtNeuronActual = double(StateVarsSpikeList.Iext.IExtNeuron(RelevantTimeIndices));
-ResponsibleIExtNeuronFromSim = binarySearch(double(ResponsibleIExt.PartitionIndex{2}(ResponsibleIExt.PartitionIndex{1}+1)), 0:length(ResponsibleIExt.Data)-1, +1, -1);
-if all(ResponsibleIExtNeuronActual(:) == ResponsibleIExtNeuronFromSim(:))
-    fprintf('All The Responsible IExt Correspond to the correct neurons')
-else
-    throw(TestFail);
 end
 
 % Testing Whether The IExt Responsible Have Actually Landed on the
@@ -421,7 +416,7 @@ RespSpikesFromFunction = getRespSpikesForSpike(StateVarsDetailed, InputStateSpik
 
 % Testing Synapse correctness
 if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(RespSpikesFromMex+1)+1) == 1)
-    fprintf('First Spike: Synapse correctness is tested for MEX Function\n');
+    fprintf('First Spike: Resp-Synapse correctness is tested for MEX Function\n');
 else
     throw(TestFail);
 end
@@ -437,7 +432,7 @@ RespSpikesFromFunction = getRespSpikesForSpike(StateVarsDetailed, InputStateSpik
 
 % Testing Synapse correctness
 if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(RespSpikesFromMex+1)+1) == 1)
-    fprintf('Second Spike: Synapse correctness is tested for MEX Function\n');
+    fprintf('Second Spike: Resp-Synapse correctness is tested for MEX Function\n');
 else
     throw(TestFail);
 end
@@ -446,3 +441,36 @@ if all(RespSpikesFromMex(:) == RespSpikesFromFunction(:))
 else
     throw(TestFail);
 end
+
+% Getting Tipping Synapses from both mex and .m and checking
+TippingSpikesFromMex = TippingSpikes{1}{1};
+TippingSpikesFromFunction = getTippingSpikesForSpike(StateVarsDetailed, InputStateSpikeList, OutputVarsSpikeList.SpikeList, 1, GenSpikeList{1}(1), 0);
+
+% Testing Synapse correctness
+if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(TippingSpikesFromMex+1)+1) == 1)
+    fprintf('First Spike: Tipping-Synapse correctness is tested for MEX Function\n');
+else
+    throw(TestFail);
+end
+if all(TippingSpikesFromMex(:) == TippingSpikesFromFunction(:))
+    fprintf('First Spike: Mex Function consistent with MATLAB Functions\n');
+else
+    throw(TestFail);
+end
+
+% Getting Tipping Synapses from both mex and .m and checking
+TippingSpikesFromMex = TippingSpikes{1}{2};
+TippingSpikesFromFunction = getTippingSpikesForSpike(StateVarsDetailed, InputStateSpikeList, OutputVarsSpikeList.SpikeList, 1, GenSpikeList{1}(2), 0);
+
+% Testing Synapse correctness
+if all(InputStateSpikeList.NEnd(OutputVarsSpikeList.SpikeList.SpikeSynInds(TippingSpikesFromMex+1)+1) == 1)
+    fprintf('Second Spike: Tipping-Synapse correctness is tested for MEX Function\n');
+else
+    throw(TestFail);
+end
+if all(TippingSpikesFromMex(:) == TippingSpikesFromFunction(:))
+    fprintf('Second Spike: Mex Function consistent with MATLAB Functions\n');
+else
+    throw(TestFail);
+end
+
