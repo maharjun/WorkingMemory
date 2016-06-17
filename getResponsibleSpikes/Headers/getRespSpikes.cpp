@@ -258,6 +258,7 @@ void getRespSpikes::SimulationClass::ResponsibleSynCalc(void) {
 	// Here we join RespSpikeVectSplit to create ResponsibleSpikes
 	for(uint32_t i=0; i<N; ++i) {
 		ResponsibleSpikes.push_back(RespSpikeVectSplit[i]);
+		TippingSpikes.push_back(TippingSpikeVectSplit[i]);
 	}
 	// We Flatten GenSpikeList to get GenSpikeListOut
 	GenSpikeListOut.append(GenSpikeList);
