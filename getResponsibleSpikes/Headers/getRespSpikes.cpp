@@ -79,17 +79,18 @@ void getRespSpikes::SimulationClass::SpikeTippingCalc(void) {
 			auto FirstTimeAfterPrevSpike = (j > 0) ? GenSpikeList[i][j-1]+1 : StartTime;
 
 			DiscreteRange CurrentRange;
-			CurrentRange.endPoint = CurrentSpikeTime+1;
 			bool foundRangeBegin = false;
 			for(uint32_t TIndex=CurrentSpikeTime; TIndex --> FirstTimeAfterPrevSpike;) {
 				if (isUnTipped(U(TIndex-StartTime, i), V(TIndex-StartTime, i))) {
 					foundRangeBegin = true;
-					CurrentRange.beginPoint = TIndex;
+					CurrentRange.beginPoint = TIndex+1;
+					CurrentRange.endPoint = CurrentRange.beginPoint+1;
 					break;
 				}
 			}
 			if (!foundRangeBegin) {
-				CurrentRange.beginPoint = FirstTimeAfterPrevSpike;
+				CurrentRange.beginPoint = 0;
+				CurrentRange.endPoint = 0;
 			}
 			SpikeTipping[i].push_back(CurrentRange);
 		}
