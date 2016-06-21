@@ -53,7 +53,7 @@ void getRespSpikes::SimulationClass::SpikeValidityCalc(void) {
 			for(uint32_t TIndex=CurrentSpikeTime; TIndex --> FirstTimeAfterPrevSpike;) {
 				if (isInReset(U(TIndex-StartTime, i), V(TIndex-StartTime, i))) {
 					foundRangeBegin = true;
-					CurrentRange.beginPoint = TIndex;
+					CurrentRange.beginPoint = TIndex+1;
 					break;
 				}
 			}
