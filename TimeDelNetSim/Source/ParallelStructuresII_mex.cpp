@@ -109,7 +109,7 @@ void CurrentUpdate::operator () (const tbb::blocked_range<int32_t*> &BlockedRang
 		if (CurrentSynapse.NEnd <= IntVars.NExc && CurrentSynapseInd < IntVars.MExc)
 		if (CurrLSTNeuron >= 0){
 			size_t SpikeTimeDiffCurr = time - CurrLSTNeuron - 1;
-			ST_STDP_RelativeInc[CurrentSynapseInd] -= ST_STDP_EffectMaxAntiCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
+			ST_STDP_RelativeInc[CurrentSynapseInd] = CurrRelativeInc - ST_STDP_EffectMaxAntiCausal*pow(ST_STDP_EffectDecay, SpikeTimeDiffCurr);
 			// ST_STDP_RelativeInc[CurrentSynapseInd] = (ST_STDP_RelativeInc[CurrentSynapseInd] < 0) ? 0 : ST_STDP_RelativeInc[CurrentSynapseInd];
 			WeightDeriv[CurrentSynapseInd] -= ((SpikeTimeDiffCurr < STDPMaxWinLen) ? 1.2f*ExpVect[SpikeTimeDiffCurr] : 0);
 		}
