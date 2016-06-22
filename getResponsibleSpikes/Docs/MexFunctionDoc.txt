@@ -12,3 +12,8 @@
 % 	U, V constricted to the respective time range
 % 	SpikeList (constricted, note that we dont need to change the entries)
 % 	onemsbyTstep
+% 
+% Optional Input fields are:
+% 
+%   IExtNeuron, IRandNeuron (IExt and IRand Information). If not provided
+%   then it will be treated as though There was no IExt or IRand
