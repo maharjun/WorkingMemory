@@ -125,8 +125,8 @@ int getOutputControl(char* OutputControlSequence){
 void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &InputArgList){
 
 	// Initializing N, M Ensuring that "a" and "NStart" Fields are present
-	size_t N = mxGetNumberOfElements(getValidStructField(MatlabInputStruct, "a", MexMemInputOps(true)));
-	size_t M = mxGetNumberOfElements(getValidStructField(MatlabInputStruct, "NStart", MexMemInputOps(true)));
+	size_t N = mxGetNumberOfElements(getValidStructField(MatlabInputStruct, "a", getInputOps(1, "is_required", "is_nonempty")));
+	size_t M = mxGetNumberOfElements(getValidStructField(MatlabInputStruct, "NStart", getInputOps(1, "is_required", "is_nonempty")));
 
 	// set Cumpulsory Simulation Parameters
 	getInputfromStruct<int32_t>(MatlabInputStruct, "onemsbyTstep", InputArgList.onemsbyTstep, getInputOps(1, "is_required"));
