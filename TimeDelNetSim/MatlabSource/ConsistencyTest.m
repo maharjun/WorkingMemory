@@ -1,4 +1,4 @@
-addpath('../../x64/Release_Lib/');
+addpath('../../TimeDelNetSim_build/install/');
 addpath ../../MexMemoryInterfacing/MatlabSource/
 %%
 rng(25);
@@ -63,7 +63,7 @@ save('../Data/InputData.mat', 'InputStruct');
 
 % [OutputVars, StateVars, FinalState, InputState] = TimeDelNetSim(InputStruct);
 % Run the program after this
-! start "TimeDelNetSim Sparse Simulation" /d . "powershell" ". .\Release_Exe.ps1"
+! ../../TimeDelNetSim_build/install/TimeDelNetSim ../Data/InputData.mat ../Data/SimResults1000DebugSparseLong.mat
 %% Get Detailed vector from Initial State 
 % This is to check correctness of initial state return with default inputs
 
@@ -93,7 +93,7 @@ InputStruct.OutputControl         = strjoin(OutputOptions);
 InputStruct.OutputFile = 'SimResults1000DebugDetailedfromInit.mat';
 save('../Data/InputData.mat', 'InputStruct');
 % Run the program
-! start "TimeDelNetSim Sparse Simulation" /d . "powershell" ". .\Release_Exe.ps1"
+! ../../TimeDelNetSim_build/install/TimeDelNetSim ../Data/InputData.mat ../Data/SimResults1000DebugDetailedfromInit.mat
 %% Loading Relevent Data
 
 % Loading and renaming variables for detailed simulation
@@ -140,7 +140,7 @@ InputStruct.OutputControl         = strjoin(OutputOptions);
 
 InputStruct.OutputFile = 'SimResults1000DebugDetailedfromFinal.mat';
 save('../Data/InputData.mat', 'InputStruct');
-! start "TimeDelNetSim Sparse Simulation" /d . "powershell" ". .\Release_Exe.ps1"
+! ../../TimeDelNetSim_build/install/TimeDelNetSim ../Data/InputData.mat ../Data/SimResults1000DebugDetailedfromFinal.mat
 %% Loading Relevant Data
 load('../Data/SimResults1000DebugDetailedfromFinal.mat');
 clear OutputVarsDetailed StateVarsDetailed InputStateDetailed FinalStateDetailed;
