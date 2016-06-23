@@ -107,9 +107,9 @@ void getRespSpikes::SimulationClass::initialize(const mxArray *InputmxArray) {
 	// SpikeListStruct SpikeList;
 
 	// Initializing N, M, T
-	getInputfromStruct<int32_t>(InputmxArray, "N", this->N, getInputOps(1, "is_required"));
+	getInputfromStruct<int32_t>(InputmxArray, "N", this->N, getInputOps(2, "is_required", "is_nonempty"));
 	this->M = FieldInfo<MexVector<int32_t>>::getSize(
-		getValidStructField<MexVector<int32_t>>(InputmxArray, "NStart", getInputOps(1, "is_required")));
+		getValidStructField<MexVector<int32_t>>(InputmxArray, "NStart", getInputOps(2, "is_required", "is_nonempty")));
 	this->T = FieldInfo<MexMatrix<float>>::getSize(
 		getValidStructField<MexMatrix<float>>(InputmxArray, "U", getInputOps(1, "is_required")), 1);
 
