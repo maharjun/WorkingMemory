@@ -144,6 +144,7 @@ void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &Inpu
 	InputArgList.BluntnessThresh    = 0.6f;
 	InputArgList.ResharpeningExp    = 1.2f;
 	InputArgList.STDPDecayFactor    = powf(0.95f, 1.0f / InputArgList.onemsbyTstep);
+	InputArgList.STDPBasalWeightInc = 0.0f;
 	InputArgList.STDPMaxWinLen      = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
 	InputArgList.CurrentDecayFactor = powf(1.0f / 3.5f, 1.0f / InputArgList.onemsbyTstep);
 	InputArgList.W0                 = 0.1f;
@@ -184,6 +185,7 @@ void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &Inpu
 	getInputfromStruct<float>(MatlabInputStruct, "BluntnessThresh"   , InputArgList.BluntnessThresh   );
 	getInputfromStruct<float>(MatlabInputStruct, "ResharpeningExp"   , InputArgList.ResharpeningExp   );
 	getInputfromStruct<float>(MatlabInputStruct, "STDPDecayFactor"   , InputArgList.STDPDecayFactor   );
+	getInputfromStruct<float>(MatlabInputStruct, "STDPBasalWeightInc", InputArgList.STDPBasalWeightInc);
 	if (getInputfromStruct<int>(MatlabInputStruct, "STDPMaxWinLen", InputArgList.STDPMaxWinLen, getInputOps(3, "is_required", "no_except", "quiet"))){
 		InputArgList.STDPMaxWinLen = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
 	}
@@ -431,6 +433,7 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 		"BluntnessThresh"      ,
 		"ResharpeningExp"      ,
 		"STDPDecayFactor"      ,
+		"STDPBasalWeightInc"   ,
 		"STDPMaxWinLen"        ,
 		"CurrentDecayFactor"   ,
 		"W0"                   ,
@@ -475,6 +478,7 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 	mxSetField(ReturnPointer, 0, "RSMWeightInThresh"   , assignmxArray<float>  (InputStateStruct.RSMWeightInThresh   ));
 	mxSetField(ReturnPointer, 0, "BluntnessThresh"     , assignmxArray<float>  (InputStateStruct.BluntnessThresh     ));
 	mxSetField(ReturnPointer, 0, "ResharpeningExp"     , assignmxArray<float>  (InputStateStruct.ResharpeningExp     ));
+	mxSetField(ReturnPointer, 0, "STDPBasalWeightInc"  , assignmxArray<float>  (InputStateStruct.STDPBasalWeightInc  ));
 	mxSetField(ReturnPointer, 0, "STDPDecayFactor"     , assignmxArray<float>  (InputStateStruct.STDPDecayFactor     ));
 	mxSetField(ReturnPointer, 0, "STDPMaxWinLen"       , assignmxArray<int32_t>(InputStateStruct.STDPMaxWinLen       ));
 	mxSetField(ReturnPointer, 0, "CurrentDecayFactor"  , assignmxArray<float>  (InputStateStruct.CurrentDecayFactor  ));
