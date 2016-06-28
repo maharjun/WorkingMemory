@@ -512,6 +512,7 @@ void InternalVars::DoInputStateOutput(InputArgs &InputStateOut){
 	InputStateOut.I0                  = I0                  ;
 	InputStateOut.TotalWeightInThresh = TotalWeightInThresh;
 	InputStateOut.STDPDecayFactor    = STDPDecayFactor    ;
+	InputStateOut.STDPBasalWeightInc = STDPBasalWeightInc ;
 	InputStateOut.STDPMaxWinLen      = STDPMaxWinLen      ;
 	InputStateOut.CurrentDecayFactor = CurrentDecayFactor ;
 	InputStateOut.W0                 = W0                 ;
@@ -856,10 +857,12 @@ void SimulateParallel(
 
 		if (!(time % (1000 * onemsbyTstep))){
 			for (int j = 0; j < MExc; ++j){
-				Network[j].Weight += WeightDeriv[j];
-				Network[j].Weight = (Network[j].Weight > 0) ? Network[j].Weight : 0;
-				Network[j].Weight = (Network[j].Weight < IntVars.MaxSynWeight) ? Network[j].Weight : IntVars.MaxSynWeight;
-				WeightDeriv[j] = 0;
+				if (Network[j].NEnd <= NExc) {
+					Network[j].Weight += WeightDeriv[j] + IntVars.STDPBasalWeightInc;
+					Network[j].Weight = (Network[j].Weight > 0) ? Network[j].Weight : 0;
+					Network[j].Weight = (Network[j].Weight < IntVars.MaxSynWeight) ? Network[j].Weight : IntVars.MaxSynWeight;
+					WeightDeriv[j] = 0;
+				}
 			}
 		}
 

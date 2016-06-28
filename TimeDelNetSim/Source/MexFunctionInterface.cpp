@@ -142,6 +142,7 @@ void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &Inpu
 	InputArgList.I0                 = 1.0f;
 	InputArgList.TotalWeightInThresh = 100.0f;
 	InputArgList.STDPDecayFactor    = powf(0.95f, 1.0f / InputArgList.onemsbyTstep);
+	InputArgList.STDPBasalWeightInc = 0.0f;
 	InputArgList.STDPMaxWinLen      = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
 	InputArgList.CurrentDecayFactor = powf(1.0f / 3.5f, 1.0f / InputArgList.onemsbyTstep);
 	InputArgList.W0                 = 0.1f;
@@ -180,6 +181,7 @@ void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &Inpu
 	getInputfromStruct<float>(MatlabInputStruct, "I0"                , InputArgList.I0                );
 	getInputfromStruct<float>(MatlabInputStruct, "TotalWeightInThresh", InputArgList.TotalWeightInThresh);
 	getInputfromStruct<float>(MatlabInputStruct, "STDPDecayFactor"   , InputArgList.STDPDecayFactor   );
+	getInputfromStruct<float>(MatlabInputStruct, "STDPBasalWeightInc", InputArgList.STDPBasalWeightInc);
 	if (getInputfromStruct<int>(MatlabInputStruct, "STDPMaxWinLen", InputArgList.STDPMaxWinLen, getInputOps(3, "is_required", "no_except", "quiet"))){
 		InputArgList.STDPMaxWinLen = int(InputArgList.onemsbyTstep*(log(0.0001) / log(pow((double)InputArgList.STDPDecayFactor, (double)InputArgList.onemsbyTstep))));
 	}
@@ -193,7 +195,7 @@ void takeInputFromMatlabStruct(const mxArray* MatlabInputStruct, InputArgs &Inpu
 	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_EffectMaxCausal"    , InputArgList.ST_STDP_EffectMaxCausal    );
 	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_EffectMaxAntiCausal", InputArgList.ST_STDP_EffectMaxAntiCausal);
 	getInputfromStruct<float>(MatlabInputStruct, "ST_STDP_MaxRelativeInc"     , InputArgList.ST_STDP_MaxRelativeInc     );
-	
+
 	// Initializing Time
 	getInputfromStruct<int32_t>(MatlabInputStruct, "InitialState.Time", InputArgList.InitialState.Time);
 
@@ -326,7 +328,7 @@ mxArray * putStateToMatlabStruct(StateVarsOutStruct &Output){
 	// Assigning Iext State variables
 	mxArrayPtr mxIExtStateVars = IExtInterface::putStateVarstoMATLABStruct(Output.IextInterface);
 	mxSetField(ReturnPointer, 0, "Iext"          , mxIExtStateVars);
-	
+
 	// Assigning current time
 	mxSetField(ReturnPointer, 0, "Time"          , assignmxArray(Output.TimeOut));
 
@@ -425,6 +427,7 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 		"I0"                   ,
 		"TotalWeightInThresh"  ,
 		"STDPDecayFactor"      ,
+		"STDPBasalWeightInc"   ,
 		"STDPMaxWinLen"        ,
 		"CurrentDecayFactor"   ,
 		"W0"                   ,
@@ -463,10 +466,11 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 	mxSetField(ReturnPointer, 0, "Delay"                , assignmxArray(InputStateStruct.Delay                ));
 	
 	mxSetField(ReturnPointer, 0, "InterestingSyns"      , assignmxArray(InputStateStruct.InterestingSyns      ));
-	
+
 	// Assigning Optional Simulation Algorithm Parameters
 	mxSetField(ReturnPointer, 0, "I0"                  , assignmxArray<float>  (InputStateStruct.I0                  ));
 	mxSetField(ReturnPointer, 0, "TotalWeightInThresh" , assignmxArray<float>  (InputStateStruct.TotalWeightInThresh ));
+	mxSetField(ReturnPointer, 0, "STDPBasalWeightInc"  , assignmxArray<float>  (InputStateStruct.STDPBasalWeightInc  ));
 	mxSetField(ReturnPointer, 0, "STDPDecayFactor"     , assignmxArray<float>  (InputStateStruct.STDPDecayFactor     ));
 	mxSetField(ReturnPointer, 0, "STDPMaxWinLen"       , assignmxArray<int32_t>(InputStateStruct.STDPMaxWinLen       ));
 	mxSetField(ReturnPointer, 0, "CurrentDecayFactor"  , assignmxArray<float>  (InputStateStruct.CurrentDecayFactor  ));
@@ -483,7 +487,7 @@ mxArray * putInputStatetoMatlabStruct(InputArgs &InputStateStruct){
 	// Assigning IExtinterface Input Variables
 	mxArrayPtr mxIExtInputVars = IExtInterface::putInputVarstoMATLABStruct(InputStateStruct.IextInterface);
 	mxSetField(ReturnPointer, 0, "Iext", mxIExtInputVars);
-
+	
 	// Assigning Optional Simulation Parameters
 	mxSetField(ReturnPointer, 0, "StorageStepSize"      , assignmxArray<int32_t>(InputStateStruct.StorageStepSize));
 	mxSetField(ReturnPointer, 0, "StatusDisplayInterval", assignmxArray<int32_t>(InputStateStruct.StatusDisplayInterval));
