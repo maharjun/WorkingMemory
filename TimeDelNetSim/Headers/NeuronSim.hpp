@@ -158,6 +158,7 @@ struct InputArgs{
 	float I0;
 	float   CurrentDecayFactor;	
 	float   STDPDecayFactor;
+	float   STDPBasalWeightInc;
 	int32_t STDPMaxWinLen;
 	float   MaxSynWeight;
 	float   W0;
@@ -211,6 +212,7 @@ struct InternalVars{
 	const float I0;
 	const float   CurrentDecayFactor;
 	const float   STDPDecayFactor;
+	const float   STDPBasalWeightInc;
 	const int32_t STDPMaxWinLen;
 	const float   MaxSynWeight;
 	const float   W0;
@@ -322,6 +324,7 @@ struct InternalVars{
 		STDPMaxWinLen      (IArgs.STDPMaxWinLen),
 		CurrentDecayFactor (IArgs.CurrentDecayFactor),
 		STDPDecayFactor    (IArgs.STDPDecayFactor),
+		STDPBasalWeightInc (IArgs.STDPBasalWeightInc),
 		W0                 (IArgs.W0),
 		MaxSynWeight       (IArgs.MaxSynWeight),
 
